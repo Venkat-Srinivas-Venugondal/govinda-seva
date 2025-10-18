@@ -5,16 +5,31 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Siren, Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { useAuth, useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
 
 type SosStatus = 'idle' | 'sending' | 'success' | 'error';
 
 export function SosButton() {
   const [status, setStatus] = useState<SosStatus>('idle');
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const auth = useAuth();
+  const { user } = auth;
 
   const handleSosClick = () => {
     if (status === 'sending') return;
     setStatus('sending');
+
+    if (!user) {
+       toast({
+        variant: 'destructive',
+        title: 'Not Logged In',
+        description: 'You must be logged in to send an SOS alert.',
+      });
+      setStatus('error');
+      return;
+    }
 
     if (!navigator.geolocation) {
       toast({
@@ -29,8 +44,15 @@ export function SosButton() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        // In a real app, this would send to a Firestore 'alerts' collection.
-        console.log('SOS Alert:', { latitude, longitude, timestamp: new Date() });
+        if (!firestore) return;
+        
+        const alertsCollection = collection(firestore, 'emergencyAlerts');
+        addDocumentNonBlocking(alertsCollection, {
+          latitude,
+          longitude,
+          timestamp: serverTimestamp(),
+          sentBy: user.uid,
+        });
 
         toast({
           title: 'SOS Alert Sent',

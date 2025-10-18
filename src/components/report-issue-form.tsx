@@ -19,6 +19,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Wrench } from 'lucide-react';
+import { useAuth, useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
 
 const formSchema = z.object({
   location: z.string().min(5, {
@@ -31,6 +33,9 @@ const formSchema = z.object({
 
 export function ReportIssueForm() {
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const auth = useAuth();
+  const { user } = auth;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -40,14 +45,46 @@ export function ReportIssueForm() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // In a real app, this would submit to a Firestore collection.
-    console.log('Issue Reported:', values);
-    toast({
-      title: 'Report Submitted',
-      description: 'Thank you for your help in improving our facilities.',
-    });
-    form.reset();
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!firestore) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Database not available.",
+        });
+        return;
+    }
+    if (!user) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Error",
+          description: "You must be logged in to report an issue.",
+        });
+        return;
+    }
+
+    try {
+      const issuesCollection = collection(firestore, 'issueReports');
+      await addDocumentNonBlocking(issuesCollection, {
+        ...values,
+        reportedBy: user.uid,
+        status: 'New',
+        timestamp: serverTimestamp(),
+      });
+      
+      toast({
+        title: 'Report Submitted',
+        description: 'Thank you for your help in improving our facilities.',
+      });
+      form.reset();
+    } catch (e: any) {
+       console.error("Error submitting issue:", e);
+        toast({
+            variant: "destructive",
+            title: "Uh oh! Something went wrong.",
+            description: "Could not submit your report. Please try again.",
+        });
+    }
   }
 
   return (

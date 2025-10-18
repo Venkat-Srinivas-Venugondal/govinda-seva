@@ -82,3 +82,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+#recaptcha-container {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}

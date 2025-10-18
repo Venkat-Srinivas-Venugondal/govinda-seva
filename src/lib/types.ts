@@ -1,9 +1,12 @@
+import { Timestamp } from "firebase/firestore";
+
 export type Issue = {
   id: string;
   description: string;
   location: string;
-  timestamp: Date;
+  timestamp: Timestamp;
   status: 'New' | 'In Progress' | 'Resolved';
+  reportedBy: string;
 };
 
 export type SosAlert = {
@@ -11,6 +14,7 @@ export type SosAlert = {
   latitude: number;
   longitude: number;
   timestamp: Date;
+  sentBy: string;
 };
 
 export type BroadcastMessage = {
@@ -18,4 +22,5 @@ export type BroadcastMessage = {
   message: string;
   target: 'Devotees' | 'Volunteers';
   timestamp: Date;
+  sentBy: string;
 };

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import {
   Card,
@@ -18,44 +18,41 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { initialIssues, initialSosAlerts } from '@/lib/mock-data';
 import type { Issue, SosAlert } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { formatDistanceToNow } from 'date-fns';
-import { Users, AlertTriangle, Wrench } from 'lucide-react';
+import { Users, AlertTriangle, Wrench, Loader2, Clock } from 'lucide-react';
+import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { UpdateDarshanTimeForm } from '@/components/admin/update-darshan-time-form';
 
 export default function AdminDashboardPage() {
-  const [issues, setIssues] = useState<Issue[]>(initialIssues);
-  const [alerts, setAlerts] = useState<SosAlert[]>(initialSosAlerts);
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const firestore = useFirestore();
   const mapImage = PlaceHolderImages.find((img) => img.id === 'map');
 
-  useEffect(() => {
-    const issueInterval = setInterval(() => {
-      const newIssue: Issue = {
-        id: `ISSUE-${Math.floor(Math.random() * 900) + 100}`,
-        description: 'New issue detected automatically.',
-        location: 'Auto-Generated Location',
-        timestamp: new Date(),
-        status: 'New',
-      };
-      setIssues((prev) => [newIssue, ...prev]);
-    }, 20000);
+  const issuesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'issueReports'), orderBy('timestamp', 'desc'));
+  }, [firestore]);
 
-    const alertInterval = setInterval(() => {
-        const newAlert: SosAlert = {
-          id: `SOS-${Math.floor(Math.random() * 900) + 100}`,
-          latitude: 13.684 + (Math.random() - 0.5) * 0.01,
-          longitude: 79.349 + (Math.random() - 0.5) * 0.01,
-          timestamp: new Date(),
-        };
-        setAlerts((prev) => [newAlert, ...prev]);
-      }, 45000);
+  const alertsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'emergencyAlerts'), orderBy('timestamp', 'desc'));
+  }, [firestore]);
+  
+  const darshanTimesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'darshanTimes'), orderBy('timestamp', 'desc'), limit(1));
+  }, [firestore]);
 
-    return () => {
-        clearInterval(issueInterval);
-        clearInterval(alertInterval);
-    };
-  }, []);
+  const { data: issues, isLoading: isLoadingIssues } = useCollection<Issue>(issuesQuery);
+  const { data: alerts, isLoading: isLoadingAlerts } = useCollection<SosAlert & { latitude: number; longitude: number }>(alertsQuery);
+  const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<{waitTime: number}>(darshanTimesQuery);
+  const latestDarshanTime = darshanTimes?.[0];
+
 
   const getStatusBadge = (status: Issue['status']) => {
     switch (status) {
@@ -65,13 +62,31 @@ export default function AdminDashboardPage() {
       default: return <Badge>{status}</Badge>;
     }
   };
+  
+  const isLoading = isUserLoading || isLoadingIssues || isLoadingAlerts || isLoadingDarshan;
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="size-16 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    router.push('/login');
+    return null;
+  }
+
+  const openIssuesCount = issues?.filter(i => i.status !== 'Resolved').length ?? 0;
+  const activeAlertsCount = alerts?.length ?? 0;
 
   return (
     <div className="min-h-screen p-4 md:p-8">
       <h1 className="font-headline text-4xl font-bold">Admin Dashboard</h1>
       <p className="text-muted-foreground">Live overview of temple operations.</p>
       
-      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Staff</CardTitle>
@@ -88,7 +103,7 @@ export default function AdminDashboardPage() {
             <Wrench className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{issues.filter(i => i.status !== 'Resolved').length}</div>
+            <div className="text-2xl font-bold">{openIssuesCount}</div>
             <p className="text-xs text-muted-foreground">Total unresolved issues reported</p>
           </CardContent>
         </Card>
@@ -98,8 +113,18 @@ export default function AdminDashboardPage() {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{alerts.length}</div>
+            <div className="text-2xl font-bold">{activeAlertsCount}</div>
             <p className="text-xs text-muted-foreground">Immediate attention required</p>
+          </CardContent>
+        </Card>
+         <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Darshan Wait Time</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{latestDarshanTime ? `${latestDarshanTime.waitTime} mins` : 'N/A'}</div>
+            <UpdateDarshanTimeForm currentWaitTime={latestDarshanTime?.waitTime} />
           </CardContent>
         </Card>
       </div>
@@ -115,7 +140,7 @@ export default function AdminDashboardPage() {
               {mapImage && (
                 <Image src={mapImage.imageUrl} alt="Map of temple complex" fill className="object-cover" data-ai-hint={mapImage.imageHint} />
               )}
-              {alerts.map((alert, index) => (
+              {alerts?.map((alert) => (
                 <div key={alert.id}
                      className="absolute animate-pulse"
                      style={{
@@ -133,7 +158,7 @@ export default function AdminDashboardPage() {
             <div className="max-h-96 overflow-y-auto">
               <Table>
                 <TableBody>
-                  {alerts.map(alert => (
+                  {alerts && alerts.map(alert => (
                     <TableRow key={alert.id}>
                       <TableCell>
                         <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -141,9 +166,14 @@ export default function AdminDashboardPage() {
                       <TableCell>
                          Lat: {alert.latitude.toFixed(4)}, Lon: {alert.longitude.toFixed(4)}
                       </TableCell>
-                      <TableCell className="text-right">{formatDistanceToNow(alert.timestamp, { addSuffix: true })}</TableCell>
+                      <TableCell className="text-right">
+                        {alert.timestamp ? formatDistanceToNow(alert.timestamp.toDate(), { addSuffix: true }) : 'just now'}
+                      </TableCell>
                     </TableRow>
                   ))}
+                   {alerts && alerts.length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-center">No active SOS alerts.</TableCell></TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -165,16 +195,19 @@ export default function AdminDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {issues.map(issue => (
+                {issues && issues.map(issue => (
                   <TableRow key={issue.id}>
                     <TableCell>{getStatusBadge(issue.status)}</TableCell>
                     <TableCell>
                         <div className="font-medium">{issue.description}</div>
                         <div className="text-xs text-muted-foreground">{issue.location}</div>
                     </TableCell>
-                    <TableCell>{formatDistanceToNow(issue.timestamp, { addSuffix: true })}</TableCell>
+                    <TableCell>{issue.timestamp ? formatDistanceToNow(issue.timestamp.toDate(), { addSuffix: true }) : 'just now'}</TableCell>
                   </TableRow>
                 ))}
+                {issues && issues.length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-center">No issues reported.</TableCell></TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

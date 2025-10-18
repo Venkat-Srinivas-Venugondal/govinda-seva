@@ -6,21 +6,13 @@
       "type": "object",
       "description": "Represents an issue reported by a devotee.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the issue report."
-        },
         "details": {
           "type": "string",
           "description": "Textual description of the reported issue."
         },
-        "latitude": {
-          "type": "number",
-          "description": "Latitude coordinate of the issue location."
-        },
-        "longitude": {
-          "type": "number",
-          "description": "Longitude coordinate of the issue location."
+        "location": {
+          "type": "string",
+          "description": "Textual description of the issue location."
         },
         "reportedBy": {
           "type": "string",
@@ -29,7 +21,7 @@
         "status": {
           "type": "string",
           "description": "The current status of the issue (e.g., 'reported', 'in progress', 'completed').",
-          "format": "string"
+          "enum": ["New", "In Progress", "Resolved"]
         },
         "timestamp": {
           "type": "string",
@@ -38,10 +30,8 @@
         }
       },
       "required": [
-        "id",
         "details",
-        "latitude",
-        "longitude",
+        "location",
         "reportedBy",
         "status",
         "timestamp"
@@ -53,10 +43,6 @@
       "type": "object",
       "description": "Represents an emergency SOS alert sent by a devotee.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the emergency alert."
-        },
         "latitude": {
           "type": "number",
           "description": "Latitude coordinate of the devotee's location."
@@ -76,7 +62,6 @@
         }
       },
       "required": [
-        "id",
         "latitude",
         "longitude",
         "timestamp",
@@ -89,11 +74,11 @@
       "type": "object",
       "description": "Represents a devotee using the application.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
           "description": "Unique identifier for the devotee."
         },
-        "name": {
+        "displayName": {
           "type": "string",
           "description": "Name of the devotee."
         },
@@ -108,9 +93,7 @@
         }
       },
       "required": [
-        "id",
-        "name",
-        "email"
+        "uid"
       ]
     },
     "Volunteer": {
@@ -119,11 +102,11 @@
       "type": "object",
       "description": "Represents a volunteer.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
           "description": "Unique identifier for the volunteer."
         },
-        "name": {
+        "displayName": {
           "type": "string",
           "description": "Name of the volunteer."
         },
@@ -131,22 +114,10 @@
           "type": "string",
           "description": "Email address of the volunteer.",
           "format": "email"
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "Phone number of the volunteer."
-        },
-        "assignedTasks": {
-          "type": "array",
-          "description": "References to IssueReports that this volunteer is assigned to.",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": [
-        "id",
-        "name",
+        "uid",
         "email"
       ]
     },
@@ -156,11 +127,11 @@
       "type": "object",
       "description": "Represents an administrator.",
       "properties": {
-        "id": {
+        "uid": {
           "type": "string",
           "description": "Unique identifier for the administrator."
         },
-        "name": {
+        "displayName": {
           "type": "string",
           "description": "Name of the administrator."
         },
@@ -168,15 +139,10 @@
           "type": "string",
           "description": "Email address of the administrator.",
           "format": "email"
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "Phone number of the administrator."
         }
       },
       "required": [
-        "id",
-        "name",
+        "uid",
         "email"
       ]
     },
@@ -186,10 +152,6 @@
       "type": "object",
       "description": "Represents a broadcast message sent to users.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the broadcast message."
-        },
         "message": {
           "type": "string",
           "description": "The content of the broadcast message."
@@ -209,167 +171,79 @@
         }
       },
       "required": [
-        "id",
         "message",
         "recipientType",
         "timestamp",
         "sentBy"
       ]
+    },
+    "DarshanTime": {
+      "title": "DarshanTime",
+      "type": "object",
+      "description": "Represents the estimated Darshan wait time.",
+      "properties": {
+        "waitTime": {
+          "type": "number",
+          "description": "The wait time in minutes."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the wait time was updated."
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "ID of the admin who updated the time."
+        }
+      },
+      "required": ["waitTime", "timestamp", "updatedBy"]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "anonymous",
+      "phone"
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/issueReports/{issueReportId}",
-        "definition": {
-          "entityName": "IssueReport",
-          "schema": {
-            "$ref": "#/backend/entities/IssueReport"
-          },
-          "description": "Stores issue reports submitted by devotees. Includes denormalized 'assignedVolunteers' map for authorization independence.",
-          "params": [
-            {
-              "name": "issueReportId",
-              "description": "Unique identifier for the issue report."
-            }
-          ]
+    "/issueReports/{issueReportId}": {
+      "schema": {
+        "$ref": "#/entities/IssueReport"
+      },
+      "description": "Stores issue reports submitted by any authenticated user."
+    },
+    "/emergencyAlerts/{emergencyAlertId}": {
+      "schema": {
+        "$ref": "#/entities/EmergencyAlert"
+      },
+      "description": "Stores emergency SOS alerts sent by devotees."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/Devotee"
+      },
+      "description": "Stores public profiles for all users (devotees, volunteers, admins)."
+    },
+    "/broadcastMessages/{broadcastMessageId}": {
+      "schema": {
+        "$ref": "#/entities/BroadcastMessage"
+      },
+      "description": "Stores broadcast messages sent by admins."
+    },
+    "/roles/{userId}": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "isAdmin": { "type": "boolean" },
+          "isVolunteer": { "type": "boolean" }
         }
       },
-      {
-        "path": "/emergencyAlerts/{emergencyAlertId}",
-        "definition": {
-          "entityName": "EmergencyAlert",
-          "schema": {
-            "$ref": "#/backend/entities/EmergencyAlert"
-          },
-          "description": "Stores emergency SOS alerts sent by devotees. Accessible only by admins.",
-          "params": [
-            {
-              "name": "emergencyAlertId",
-              "description": "Unique identifier for the emergency alert."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/devotees/{devoteeId}",
-        "definition": {
-          "entityName": "Devotee",
-          "schema": {
-            "$ref": "#/backend/entities/Devotee"
-          },
-          "description": "Stores devotee profiles.",
-          "params": [
-            {
-              "name": "devoteeId",
-              "description": "Unique identifier for the devotee."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/volunteers/{volunteerId}",
-        "definition": {
-          "entityName": "Volunteer",
-          "schema": {
-            "$ref": "#/backend/entities/Volunteer"
-          },
-          "description": "Stores volunteer profiles.",
-          "params": [
-            {
-              "name": "volunteerId",
-              "description": "Unique identifier for the volunteer."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/admins/{adminId}",
-        "definition": {
-          "entityName": "Admin",
-          "schema": {
-            "$ref": "#/backend/entities/Admin"
-          },
-          "description": "Stores admin profiles.",
-          "params": [
-            {
-              "name": "adminId",
-              "description": "Unique identifier for the admin."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/broadcastMessages/{broadcastMessageId}",
-        "definition": {
-          "entityName": "BroadcastMessage",
-          "schema": {
-            "$ref": "#/backend/entities/BroadcastMessage"
-          },
-          "description": "Stores broadcast messages sent to users.",
-          "params": [
-            {
-              "name": "broadcastMessageId",
-              "description": "Unique identifier for the broadcast message."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/roles_admin/{userId}",
-        "definition": {
-          "entityName": "AdminRole",
-          "schema": {
-            "$ref": "#/backend/entities/Admin"
-          },
-          "description": "Documents in this collection represent admin users.  Document existence confers admin role.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "User ID of the admin."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/roles_volunteer/{userId}",
-        "definition": {
-          "entityName": "VolunteerRole",
-          "schema": {
-            "$ref": "#/backend/entities/Volunteer"
-          },
-          "description": "Documents in this collection represent volunteer users. Document existence confers volunteer role.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "User ID of the volunteer."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/devoteeData",
-        "definition": {
-          "entityName": "DevoteeData",
-          "schema": {
-            "$ref": "#/backend/entities/Devotee"
-          },
-          "description": "Private devotee data, accessible only to the user and admins.  Useful for storing settings or other user-specific information.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "User ID of the devotee."
-            }
-          ]
-        }
-      }
-    ],
-    "reasoning": "The Firestore structure is designed to ensure security, scalability, and ease of debugging, adhering to the principles of Authorization Independence, Clarity of Intent, DBAC, and QAPs. Authorization Independence is achieved through denormalization. For example, the `issueReports` collection includes a denormalized `assignedVolunteers` map. This avoids `get()` calls in security rules, enabling atomic operations. Structural Segregation separates data with different access needs into different collections (e.g., `issueReports`, `emergencyAlerts`, `volunteers`, `admins`, `broadcastMessages`). Access Modeling uses path-based ownership (`/users/{userId}/devoteeData`) and Membership Maps for collaborative data (not explicitly needed here but a good pattern to keep in mind). The structure supports QAPs (Rules Are Not Filters) by ensuring each collection has a homogeneous security posture.  Specifically, the `issueReports` are accessible based on volunteer and admin roles, and emergency alerts are designed for admin-only access. Global roles are handled via existence checks in dedicated collections (`/roles_admin/{uid}`, `/roles_volunteer/{uid}`). This design ensures that the volunteer task dashboard displays the relevant issue reports securely, only showing data that the authenticated volunteer or admin is authorized to access. The inclusion of `assignedVolunteers` also allows checking if the current user has access.  The admin and volunteer roles are managed via the `roles_admin` and `roles_volunteer` collections.  If the devotee data needed to be tied to a specific user, that would be stored under `/users/{userId}/devoteeData` to associate specific data to a user."
+      "description": "Stores user roles (admin, volunteer) for access control."
+    },
+    "/darshanTimes/{darshanTimeId}": {
+        "schema": { "$ref": "#/entities/DarshanTime" },
+        "description": "Stores historical and current Darshan wait times."
+    }
   }
 }

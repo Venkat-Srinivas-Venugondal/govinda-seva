@@ -1,39 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { initialIssues } from '@/lib/mock-data';
+import { useCollection, useFirestore, useUser, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
 import type { Issue } from '@/lib/types';
-import { Wrench, CheckCircle, RefreshCw } from 'lucide-react';
+import { Wrench, CheckCircle, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 export default function VolunteerDashboard() {
-  const [issues, setIssues] = useState<Issue[]>(initialIssues);
-  const [isSimulating, setIsSimulating] = useState(true);
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const firestore = useFirestore();
 
-  useEffect(() => {
-    if (!isSimulating) return;
+  const issuesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'issueReports'), orderBy('timestamp', 'desc'));
+  }, [firestore]);
+  
+  const { data: issues, isLoading } = useCollection<Issue>(issuesQuery);
 
-    const interval = setInterval(() => {
-      const newIssue: Issue = {
-        id: `ISSUE-${Math.floor(Math.random() * 900) + 100}`,
-        description: 'Newly reported automated issue for demonstration.',
-        location: 'Random Location ' + Math.floor(Math.random() * 20),
-        timestamp: new Date(),
-        status: 'New',
-      };
-      setIssues((prev) => [newIssue, ...prev]);
-    }, 15000); // Add a new issue every 15 seconds
-
-    return () => clearInterval(interval);
-  }, [isSimulating]);
-
+  const handleUpdateStatus = (issueId: string, status: Issue['status']) => {
+    if (!firestore) return;
+    const issueRef = doc(firestore, 'issueReports', issueId);
+    updateDocumentNonBlocking(issueRef, { status });
+  };
+  
   const getStatusBadge = (status: Issue['status']) => {
     switch (status) {
       case 'New':
@@ -47,6 +45,19 @@ export default function VolunteerDashboard() {
     }
   };
 
+  if (isUserLoading || isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="size-16 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    router.push('/login');
+    return null;
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
@@ -58,15 +69,6 @@ export default function VolunteerDashboard() {
                 <div>
                   <CardTitle className="font-headline text-3xl">Volunteer Task Dashboard</CardTitle>
                   <CardDescription>Live feed of reported issues. Thank you for your service.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                   <p className="text-sm text-muted-foreground flex items-center gap-2">
-                    <RefreshCw className={cn("size-4", isSimulating && "animate-spin")} />
-                    {isSimulating ? 'Live Sync Active' : 'Live Sync Paused'}
-                  </p>
-                  <Button onClick={() => setIsSimulating(s => !s)} variant="outline">
-                    {isSimulating ? 'Pause Sync' : 'Resume Sync'}
-                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -83,21 +85,23 @@ export default function VolunteerDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {issues.map((issue) => (
+                    {issues && issues.map((issue) => (
                       <TableRow key={issue.id}>
                         <TableCell>{getStatusBadge(issue.status)}</TableCell>
                         <TableCell className="font-medium">{issue.description}</TableCell>
                         <TableCell>{issue.location}</TableCell>
-                        <TableCell>{formatDistanceToNow(issue.timestamp, { addSuffix: true })}</TableCell>
+                        <TableCell>
+                          {issue.timestamp ? formatDistanceToNow(issue.timestamp.toDate(), { addSuffix: true }) : 'Just now'}
+                        </TableCell>
                         <TableCell className="text-right space-x-2">
                           {issue.status === 'New' && (
-                            <Button size="sm">
+                            <Button size="sm" onClick={() => handleUpdateStatus(issue.id, 'In Progress')}>
                               <Wrench className="mr-2 size-4" />
                               Accept Task
                             </Button>
                           )}
                           {issue.status === 'In Progress' && (
-                            <Button size="sm" variant="secondary">
+                            <Button size="sm" variant="secondary" onClick={() => handleUpdateStatus(issue.id, 'Resolved')}>
                               <CheckCircle className="mr-2 size-4" />
                               Mark Resolved
                             </Button>
@@ -107,6 +111,11 @@ export default function VolunteerDashboard() {
                     ))}
                   </TableBody>
                 </Table>
+                 {issues && issues.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground">
+                        No issues reported yet.
+                    </div>
+                )}
               </div>
             </CardContent>
           </Card>

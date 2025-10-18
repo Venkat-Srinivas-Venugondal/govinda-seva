@@ -25,6 +25,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Megaphone, Send } from 'lucide-react';
+import { useAuth, useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { collection, serverTimestamp } from 'firebase/firestore';
 
 const formSchema = z.object({
   target: z.enum(['Devotees', 'Volunteers'], {
@@ -39,6 +41,9 @@ const formSchema = z.object({
 
 export default function BroadcastPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const auth = useAuth();
+  const { user } = auth;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,14 +52,38 @@ export default function BroadcastPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // In a real app, this would use a push notification service.
-    console.log('Broadcast Sent:', values);
-    toast({
-      title: 'Broadcast Sent!',
-      description: `Your message has been sent to all ${values.target.toLowerCase()}.`,
-    });
-    form.reset();
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!firestore || !user) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "You must be logged in to send broadcasts.",
+      });
+      return;
+    }
+
+    try {
+      const broadcastsCollection = collection(firestore, 'broadcastMessages');
+      await addDocumentNonBlocking(broadcastsCollection, {
+        message: values.message,
+        recipientType: values.target,
+        sentBy: user.uid,
+        timestamp: serverTimestamp(),
+      });
+
+      toast({
+        title: 'Broadcast Sent!',
+        description: `Your message has been sent to all ${values.target.toLowerCase()}.`,
+      });
+      form.reset();
+    } catch (e: any) {
+      console.error("Error sending broadcast:", e);
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "Could not send broadcast. Please try again.",
+      });
+    }
   }
 
   return (

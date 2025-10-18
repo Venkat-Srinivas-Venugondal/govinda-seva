@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -10,15 +12,34 @@ import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Clock, Car, Users, ArrowRight, ShieldAlert, Megaphone, Wrench } from 'lucide-react';
+import { Clock, Car, Users, ArrowRight, ShieldAlert, Wrench, Map, Info } from 'lucide-react';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query, limit, orderBy } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import { useMemo } from 'react';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find((img) => img.id === 'hero');
+  const firestore = useFirestore();
+
+  const announcementsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'broadcastMessages'), orderBy('timestamp', 'desc'), limit(1));
+  }, [firestore]);
+  const { data: announcements, isLoading: isLoadingAnnouncements } = useCollection<{message: string, timestamp: any}>(announcementsQuery);
+  const latestAnnouncement = announcements?.[0];
+
+  const darshanTimesQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'darshanTimes'), orderBy('timestamp', 'desc'), limit(1));
+  }, [firestore]);
+  const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<{waitTime: number, timestamp: any}>(darshanTimesQuery);
+  const latestDarshanTime = darshanTimes?.[0];
 
   const infoCards = [
     {
       title: 'Darshan Wait Time',
-      value: '90 mins',
+      value: isLoadingDarshan ? 'Loading...' : latestDarshanTime ? `${latestDarshanTime.waitTime} mins` : 'N/A',
       icon: <Clock className="size-8 text-primary" />,
       description: 'Estimated time from VQC-II',
     },
@@ -62,6 +83,16 @@ export default function Home() {
           </div>
         </section>
 
+        {latestAnnouncement && (
+          <section className="bg-accent py-3">
+              <div className="container mx-auto px-4 text-center text-accent-foreground">
+                  <p className="font-semibold">
+                    <span className="font-bold">Latest Announcement:</span> {latestAnnouncement.message}
+                  </p>
+              </div>
+          </section>
+        )}
+
         <section className="container mx-auto px-4 py-12 md:py-16">
           <div className="grid gap-8 md:grid-cols-3">
             {infoCards.map((card) => (
@@ -88,25 +119,29 @@ export default function Home() {
             <div className="mx-auto max-w-4xl text-center">
               <h2 className="font-headline text-3xl font-bold md:text-4xl">How can we assist you?</h2>
               <p className="mt-4 text-lg text-muted-foreground">
-                We are here to help. Report non-emergency issues or request immediate help with our SOS feature.
+                Report non-emergency issues, get information, or request immediate help with our SOS feature.
               </p>
             </div>
-            <div className="mt-10 grid gap-6 md:grid-cols-2">
-              <Link href="/report-issue" className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-primary hover:shadow-lg">
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+               <Link href="/report-issue" className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-primary hover:shadow-lg">
                   <Wrench className="mx-auto size-12 text-primary transition-transform group-hover:scale-110" />
                   <h3 className="mt-4 font-headline text-2xl font-bold">Report an Issue</h3>
-                  <p className="mt-2 text-muted-foreground">Notice a problem? Let us know. Help us improve facilities for all pilgrims.</p>
-                  <Button variant="link" className="mt-4 text-primary">
-                    File a Report <ArrowRight className="ml-2 size-4" />
-                  </Button>
+                  <p className="mt-2 text-muted-foreground">Help us improve facilities for all pilgrims.</p>
               </Link>
               <Link href="/sos" className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-destructive hover:shadow-lg">
                   <ShieldAlert className="mx-auto size-12 text-destructive transition-transform group-hover:scale-110" />
                   <h3 className="mt-4 font-headline text-2xl font-bold text-destructive">Emergency SOS</h3>
-                  <p className="mt-2 text-muted-foreground">In case of a personal emergency, press the button for immediate assistance.</p>
-                  <Button variant="link" className="mt-4 text-destructive">
-                    Request Help <ArrowRight className="ml-2 size-4" />
-                  </Button>
+                  <p className="mt-2 text-muted-foreground">For personal emergencies, request immediate help.</p>
+              </Link>
+               <Link href="/token-info" className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-primary hover:shadow-lg">
+                  <Info className="mx-auto size-12 text-primary transition-transform group-hover:scale-110" />
+                  <h3 className="mt-4 font-headline text-2xl font-bold">Token Information</h3>
+                  <p className="mt-2 text-muted-foreground">Find darshan token locations and timings.</p>
+              </Link>
+               <Link href="/map" className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-primary hover:shadow-lg">
+                  <Map className="mx-auto size-12 text-primary transition-transform group-hover:scale-110" />
+                  <h3 className="mt-4 font-headline text-2xl font-bold">Temple Map</h3>
+                  <p className="mt-2 text-muted-foreground">Explore the area with a satellite map.</p>
               </Link>
             </div>
           </div>
