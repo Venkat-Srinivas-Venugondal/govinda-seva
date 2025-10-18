@@ -11,6 +11,7 @@ import { initialIssues } from '@/lib/mock-data';
 import type { Issue } from '@/lib/types';
 import { Wrench, CheckCircle, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function VolunteerDashboard() {
   const [issues, setIssues] = useState<Issue[]>(initialIssues);
