@@ -20,22 +20,16 @@ import { Badge } from '@/components/ui/badge';
 import { StaffShifts, placeholderStaffShifts } from '@/lib/staff-shifts';
 import { format } from 'date-fns';
 import { Users, Loader2 } from 'lucide-react';
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 
 export default function StaffDetailsPage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const firestore = useFirestore();
 
-  const staffShiftsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'staffShifts'), orderBy('loginTime', 'desc'));
-  }, [firestore]);
-
-  const { data: staffShifts, isLoading: isLoadingStaff } = useCollection<StaffShifts>(staffShiftsQuery);
-  const allStaff = staffShifts || placeholderStaffShifts;
+  // Use placeholder data directly instead of Firestore
+  const allStaff: StaffShifts[] = placeholderStaffShifts;
+  const isLoadingStaff = false;
 
   const formatDate = (date: any) => {
     if (!date) return 'N/A';
@@ -116,3 +110,5 @@ export default function StaffDetailsPage() {
     </div>
   );
 }
+
+    

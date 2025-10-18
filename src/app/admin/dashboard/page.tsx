@@ -27,7 +27,8 @@ import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebas
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { UpdateDarshanTimeForm } from '@/components/admin/update-darshan-time-form';
-import { StaffShifts, placeholderStaffShifts } from '@/lib/staff-shifts';
+import { placeholderStaffShifts } from '@/lib/staff-shifts';
+import type { StaffShifts } from '@/lib/staff-shifts';
 
 export default function AdminDashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -50,15 +51,15 @@ export default function AdminDashboardPage() {
     return query(collection(firestore, 'darshanTimes'), orderBy('timestamp', 'desc'), limit(1));
   }, [firestore]);
   
-  const staffShiftsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'staffShifts'), orderBy('loginTime', 'desc'));
-  }, [firestore]);
 
   const { data: issues, isLoading: isLoadingIssues } = useCollection<Issue>(issuesQuery);
   const { data: alerts, isLoading: isLoadingAlerts } = useCollection<SosAlert & { latitude: number; longitude: number }>(alertsQuery);
   const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<{waitTime: number}>(darshanTimesQuery);
-  const { data: staffShifts, isLoading: isLoadingStaff } = useCollection<StaffShifts>(staffShiftsQuery);
+  
+  // Use placeholder data directly instead of Firestore
+  const staffShifts: StaffShifts[] = placeholderStaffShifts;
+  const isLoadingStaff = false;
+
 
   const latestDarshanTime = darshanTimes?.[0];
 
@@ -96,7 +97,7 @@ export default function AdminDashboardPage() {
 
   const openIssuesCount = issues?.filter(i => i.status !== 'Resolved').length ?? 0;
   const activeAlertsCount = alerts?.length ?? 0;
-  const activeStaffCount = (staffShifts || placeholderStaffShifts).filter(s => !s.logoutTime).length;
+  const activeStaffCount = staffShifts.filter(s => !s.logoutTime).length;
 
 
   return (
@@ -104,7 +105,7 @@ export default function AdminDashboardPage() {
       className="relative min-h-screen p-4 md:p-8"
     >
        <div 
-        className="absolute inset-0 z-0 opacity-[0.08]" 
+        className="absolute inset-0 z-0 opacity-[0.15]" 
         style={{
           backgroundImage: "url('https://upload.wikimedia.org/wikipedia/en/4/4e/Tirumala_Tirupati_Devasthanams_Logo.svg')",
           backgroundSize: '300px 300px',
@@ -249,3 +250,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+    
