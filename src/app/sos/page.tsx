@@ -7,7 +7,7 @@ export default function SosPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main
-        className="relative flex flex-1 flex-col items-center justify-center p-4 text-center"
+        className="relative flex flex-1 flex-col items-center justify-start p-4 pt-24 text-center"
         style={{
           backgroundImage: `url('https://i.pinimg.com/originals/95/d5/c2/95d5c28634ee8e64058f1e9609d1ad7c.jpg')`,
           backgroundSize: 'cover',
