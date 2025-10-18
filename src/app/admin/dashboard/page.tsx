@@ -86,7 +86,7 @@ export default function AdminDashboardPage() {
       className="relative min-h-screen p-4 md:p-8"
     >
       <div 
-        className="absolute inset-0 z-0 opacity-[0.03]" 
+        className="absolute inset-0 z-0 opacity-[0.05]" 
         style={{
           backgroundImage: "url('https://upload.wikimedia.org/wikipedia/en/4/4e/Tirumala_Tirupati_Devasthanams_Logo.svg')",
           backgroundSize: '300px 300px',
