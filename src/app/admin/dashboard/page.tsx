@@ -83,10 +83,17 @@ export default function AdminDashboardPage() {
 
   return (
     <div 
-      className="relative min-h-screen p-4 md:p-8 bg-cover bg-center bg-fixed" 
-      style={{backgroundImage: "url('https://images.unsplash.com/photo-1593781298198-a69980d2c65a?q=80&w=2070&auto=format&fit=crop')"}}
+      className="relative min-h-screen p-4 md:p-8"
     >
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-0"></div>
+      <div 
+        className="absolute inset-0 z-0 opacity-[0.03]" 
+        style={{
+          backgroundImage: "url('https://upload.wikimedia.org/wikipedia/en/4/4e/Tirumala_Tirupati_Devasthanams_Logo.svg')",
+          backgroundSize: '300px 300px',
+          backgroundRepeat: 'repeat',
+        }}
+      ></div>
+      <div className="absolute inset-0 bg-background/80 z-0"></div>
       <div className="relative z-10">
         <h1 className="font-headline text-4xl font-bold">Admin Dashboard</h1>
         <p className="text-muted-foreground">Live overview of temple operations.</p>
