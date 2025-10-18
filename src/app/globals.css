@@ -84,6 +84,10 @@
 }
 
 #recaptcha-container {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 1000;
 }
+
+    

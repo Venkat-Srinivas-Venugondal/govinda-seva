@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,6 +53,8 @@ export default function LoginPage() {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [role, setRole] = useState<'devotee' | 'volunteer' | 'admin'>('devotee');
 
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+
   const {
     register: registerPhone,
     handleSubmit: handlePhoneSubmit,
@@ -72,33 +74,42 @@ export default function LoginPage() {
   } = useForm<EmailFormValues>({ resolver: zodResolver(emailSchema) });
 
 
-  useEffect(() => {
-    if (!auth || (window as any).recaptchaVerifier) return;
-
-    (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-      'callback': (response: any) => {
-        // reCAPTCHA solved, allow signInWithPhoneNumber.
-      }
-    });
-
-  }, [auth]);
+  const getRecaptchaVerifier = () => {
+    if (!auth) return null;
+    if (!(window as any).recaptchaVerifier) {
+      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response: any) => {
+          // reCAPTCHA solved, you can proceed with phone sign-in.
+        },
+        'expired-callback': () => {
+          // Response expired. Ask user to solve reCAPTCHA again.
+        }
+      });
+    }
+    return (window as any).recaptchaVerifier;
+  };
   
   const onPhoneSubmit: SubmitHandler<PhoneFormValues> = async (data) => {
     if (!auth) return;
-    const appVerifier = (window as any).recaptchaVerifier;
+    const appVerifier = getRecaptchaVerifier();
+    if (!appVerifier) {
+        toast({ variant: 'destructive', title: 'Error', description: 'reCAPTCHA verifier not initialized.' });
+        return;
+    }
+
     try {
       const result = await signInWithPhoneNumber(auth, data.phone, appVerifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
       toast({ title: 'OTP Sent', description: 'Check your phone for the verification code.' });
-    } catch (error: any)
-{
+    } catch (error: any) {
       console.error('Phone sign-in error:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to send OTP. Please ensure your phone number is correct and try again.' });
-      // Reset reCAPTCHA
-      if ((window as any).grecaptcha && (window as any).recaptchaWidgetId !== undefined) {
-        (window as any).grecaptcha.reset((window as any).recaptchaWidgetId);
+      if ((window as any).grecaptcha && (window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier.render().then((widgetId: any) => {
+            (window as any).grecaptcha.reset(widgetId);
+        });
       }
     }
   };
@@ -142,6 +153,7 @@ export default function LoginPage() {
 
   return (
     <div className="container flex min-h-screen items-center justify-center py-12">
+      <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="font-headline text-3xl">Govinda Seva Portal</CardTitle>
@@ -155,7 +167,6 @@ export default function LoginPage() {
               <TabsTrigger value="admin"><Shield className="mr-2" />Admin</TabsTrigger>
             </TabsList>
             <TabsContent value="devotee" className="pt-6">
-               <div id="recaptcha-container"></div>
               {!isOtpSent ? (
                 <form onSubmit={handlePhoneSubmit(onPhoneSubmit)} className="space-y-4">
                   <div className="space-y-2">
@@ -219,3 +230,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
