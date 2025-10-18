@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'cdn1.tripoto.com',
         port: '',
-        pathname: '/**',_
+        pathname: '/**',
       },
       {
         protocol: 'https',
