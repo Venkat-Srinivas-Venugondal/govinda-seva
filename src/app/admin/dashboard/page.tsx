@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { Issue, SosAlert, StaffShift } from '@/lib/types';
+import type { Issue, SosAlert, StaffShift, DarshanTime } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Users, AlertTriangle, Wrench, Loader2, Clock } from 'lucide-react';
@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
 
   const { data: issues, isLoading: isLoadingIssues } = useCollection<Issue>(issuesQuery);
   const { data: alerts, isLoading: isLoadingAlerts } = useCollection<SosAlert & { latitude: number; longitude: number }>(alertsQuery);
-  const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<{waitTime: number}>(darshanTimesQuery);
+  const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<DarshanTime>(darshanTimesQuery);
   const { data: staffShifts, isLoading: isLoadingStaff } = useCollection<StaffShift>(staffShiftsQuery);
   
   const latestDarshanTime = darshanTimes?.[0];

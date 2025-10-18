@@ -15,6 +15,7 @@ import { Footer } from '@/components/layout/footer';
 import { Clock, Users, ShieldAlert, Wrench, Map, Info } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, limit, orderBy } from 'firebase/firestore';
+import type { DarshanTime } from '@/lib/types';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find((img) => img.id === 'hero');
@@ -31,7 +32,7 @@ export default function Home() {
     if (!firestore) return null;
     return query(collection(firestore, 'darshanTimes'), orderBy('timestamp', 'desc'), limit(1));
   }, [firestore]);
-  const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<{waitTime: number, timestamp: any}>(darshanTimesQuery);
+  const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<DarshanTime>(darshanTimesQuery);
   const latestDarshanTime = darshanTimes?.[0];
 
   const infoCards = [

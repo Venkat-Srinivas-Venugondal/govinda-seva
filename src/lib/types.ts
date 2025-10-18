@@ -32,3 +32,10 @@ export type StaffShift = {
   loginTime: Timestamp;
   logoutTime?: Timestamp;
 };
+
+export type DarshanTime = {
+  id: string;
+  waitTime: number;
+  timestamp: Timestamp;
+  updatedBy: string;
+};
