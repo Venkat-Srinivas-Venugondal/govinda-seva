@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'cdn1.tripoto.com',
         port: '',
-        pathname: '/**',
+        pathname: '/**',_
       },
       {
         protocol: 'https',
@@ -59,6 +59,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.pinimg.com',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };

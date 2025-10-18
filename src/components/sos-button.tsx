@@ -75,14 +75,14 @@ export function SosButton() {
   const getButtonContent = () => {
     switch (status) {
       case 'sending':
-        return <Loader2 className="h-16 w-16 animate-spin" />;
+        return <Loader2 className="h-12 w-12 animate-spin" />;
       case 'success':
-        return <CheckCircle className="h-16 w-16" />;
+        return <CheckCircle className="h-12 w-12" />;
       case 'error':
-        return <XCircle className="h-16 w-16" />;
+        return <XCircle className="h-12 w-12" />;
       case 'idle':
       default:
-        return <Siren className="h-16 w-16" />;
+        return <Siren className="h-12 w-12" />;
     }
   };
 
@@ -91,7 +91,7 @@ export function SosButton() {
       onClick={handleSosClick}
       disabled={status === 'sending' || status === 'success'}
       className={cn(
-        'h-48 w-48 rounded-full border-8 shadow-2xl transition-all duration-300',
+        'h-40 w-40 rounded-full border-8 shadow-2xl transition-all duration-300',
         'bg-red-500 text-white hover:bg-red-600',
         'focus:ring-4 focus:ring-red-400 focus:ring-offset-4 focus:ring-offset-background',
         'disabled:opacity-80',
@@ -102,7 +102,7 @@ export function SosButton() {
     >
       <div className="flex flex-col items-center justify-center">
         {getButtonContent()}
-        <span className="mt-4 text-2xl font-bold">
+        <span className="mt-3 text-xl font-bold">
           {status === 'idle' ? 'SOS' : status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
       </div>
