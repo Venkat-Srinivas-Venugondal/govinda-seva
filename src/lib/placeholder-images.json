@@ -1,3 +1,16 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero",
+      "description": "A beautiful temple gopuram against a sunset sky.",
+      "imageUrl": "https://images.unsplash.com/photo-1740731082151-2ee9d9f3ab8d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0ZW1wbGUlMjBzdW5zZXR8ZW58MHx8fHwxNzYwNzU5MTQ2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "temple sunset"
+    },
+    {
+      "id": "map",
+      "description": "A placeholder map of the temple complex.",
+      "imageUrl": "https://images.unsplash.com/photo-1740707590098-8631e2b3bd5a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxtYXAlMjBibHVlcHJpbnR8ZW58MHx8fHwxNzYwNzg5NTEwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "map blueprint"
+    }
+  ]
 }
