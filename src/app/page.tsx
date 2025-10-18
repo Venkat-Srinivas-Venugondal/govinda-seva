@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { Clock, Car, Users, ArrowRight, ShieldAlert, Wrench, Map, Info } from 'lucide-react';
+import { Clock, Users, ShieldAlert, Wrench, Map, Info } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, limit, orderBy } from 'firebase/firestore';
 

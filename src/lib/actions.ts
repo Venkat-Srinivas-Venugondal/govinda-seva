@@ -12,7 +12,7 @@ const CrowdPredictionInputSchema = z.object({
 
 type PredictionState = {
   prediction?: {
-    predictedInflow: string;
+    predictedDarshanTime: string;
     congestionLevel: string;
     reasoning: string;
   };
