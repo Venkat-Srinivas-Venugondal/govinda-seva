@@ -13,23 +13,21 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Clock, Car, Users, ArrowRight, ShieldAlert, Wrench, Map, Info } from 'lucide-react';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, limit, orderBy } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
-import { useMemo } from 'react';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find((img) => img.id === 'hero');
   const firestore = useFirestore();
 
-  const announcementsQuery = useMemo(() => {
+  const announcementsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'broadcastMessages'), orderBy('timestamp', 'desc'), limit(1));
   }, [firestore]);
   const { data: announcements, isLoading: isLoadingAnnouncements } = useCollection<{message: string, timestamp: any}>(announcementsQuery);
   const latestAnnouncement = announcements?.[0];
 
-  const darshanTimesQuery = useMemo(() => {
+  const darshanTimesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'darshanTimes'), orderBy('timestamp', 'desc'), limit(1));
   }, [firestore]);
