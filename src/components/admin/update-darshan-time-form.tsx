@@ -6,8 +6,8 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth, useFirestore, addDocumentNonBlocking } from '@/firebase';
-import { collection, serverTimestamp } from 'firebase/firestore';
+import { useAuth, useFirestore } from '@/firebase';
+import { collection, serverTimestamp, addDoc } from 'firebase/firestore';
 import { Clock } from 'lucide-react';
 
 const darshanSchema = z.object({
@@ -40,7 +40,7 @@ export function UpdateDarshanTimeForm({ currentWaitTime }: UpdateDarshanTimeForm
 
     try {
       const darshanTimesCollection = collection(firestore, 'darshanTimes');
-      await addDocumentNonBlocking(darshanTimesCollection, {
+      await addDoc(darshanTimesCollection, {
         waitTime: data.waitTime,
         timestamp: serverTimestamp(),
         updatedBy: user.uid,

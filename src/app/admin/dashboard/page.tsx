@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import type { Issue, SosAlert } from '@/lib/types';
+import type { Issue, SosAlert, StaffShift } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Users, AlertTriangle, Wrench, Loader2, Clock } from 'lucide-react';
@@ -27,8 +27,6 @@ import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebas
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { UpdateDarshanTimeForm } from '@/components/admin/update-darshan-time-form';
-import { placeholderStaffShifts } from '@/lib/staff-shifts';
-import type { StaffShifts } from '@/lib/staff-shifts';
 
 export default function AdminDashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -51,16 +49,17 @@ export default function AdminDashboardPage() {
     return query(collection(firestore, 'darshanTimes'), orderBy('timestamp', 'desc'), limit(1));
   }, [firestore]);
   
+  const staffShiftsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'staffShifts'), orderBy('loginTime', 'desc'));
+  }, [firestore]);
+
 
   const { data: issues, isLoading: isLoadingIssues } = useCollection<Issue>(issuesQuery);
   const { data: alerts, isLoading: isLoadingAlerts } = useCollection<SosAlert & { latitude: number; longitude: number }>(alertsQuery);
   const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<{waitTime: number}>(darshanTimesQuery);
+  const { data: staffShifts, isLoading: isLoadingStaff } = useCollection<StaffShift>(staffShiftsQuery);
   
-  // Use placeholder data directly instead of Firestore
-  const staffShifts: StaffShifts[] = placeholderStaffShifts;
-  const isLoadingStaff = false;
-
-
   const latestDarshanTime = darshanTimes?.[0];
 
   const getStatusBadge = (status: Issue['status']) => {
@@ -97,7 +96,7 @@ export default function AdminDashboardPage() {
 
   const openIssuesCount = issues?.filter(i => i.status !== 'Resolved').length ?? 0;
   const activeAlertsCount = alerts?.length ?? 0;
-  const activeStaffCount = staffShifts.filter(s => !s.logoutTime).length;
+  const activeStaffCount = staffShifts?.filter(s => !s.logoutTime).length ?? 0;
 
 
   return (

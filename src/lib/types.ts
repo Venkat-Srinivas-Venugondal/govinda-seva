@@ -13,7 +13,7 @@ export type SosAlert = {
   id:string;
   latitude: number;
   longitude: number;
-  timestamp: Date;
+  timestamp: Timestamp;
   sentBy: string;
 };
 
@@ -21,7 +21,7 @@ export type BroadcastMessage = {
   id: string;
   message: string;
   target: 'Devotees' | 'Volunteers';
-  timestamp: Date;
+  timestamp: Timestamp;
   sentBy: string;
 };
 
