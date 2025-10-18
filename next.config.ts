@@ -53,6 +53,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'w0.peakpx.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };
