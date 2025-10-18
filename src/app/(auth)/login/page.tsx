@@ -17,7 +17,7 @@ export default function LoginPage() {
               <CardDescription>Select your role to proceed to the dashboard.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <Link href="/volunteer/dashboard" passHref legacyBehavior>
+              <Link href="/volunteer/dashboard">
                 <Button size="lg" className="w-full justify-between text-lg">
                   <div className="flex items-center">
                     <UserCheck className="mr-4 size-6" />
@@ -26,7 +26,7 @@ export default function LoginPage() {
                   <ArrowRight className="size-5" />
                 </Button>
               </Link>
-              <Link href="/admin/dashboard" passHref legacyBehavior>
+              <Link href="/admin/dashboard">
                 <Button size="lg" variant="secondary" className="w-full justify-between text-lg">
                   <div className="flex items-center">
                     <Shield className="mr-4 size-6" />

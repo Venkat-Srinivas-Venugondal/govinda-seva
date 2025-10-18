@@ -40,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <SidebarMenu>
             {adminNavItems.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <Link href={item.href} passHref legacyBehavior>
+                <Link href={item.href}>
                   <SidebarMenuButton isActive={pathname === item.href}>
                     {item.icon}
                     <span>{item.label}</span>
@@ -51,7 +51,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </SidebarMenu>
         </SidebarContent>
         <SidebarHeader>
-           <Link href="/login" passHref legacyBehavior>
+           <Link href="/login">
             <Button variant="outline" className="w-full">
               <LogOut className="mr-2 size-4" />
               Logout

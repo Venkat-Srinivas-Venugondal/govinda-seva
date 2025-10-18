@@ -92,25 +92,21 @@ export default function Home() {
               </p>
             </div>
             <div className="mt-10 grid gap-6 md:grid-cols-2">
-              <Link href="/report-issue" legacyBehavior passHref>
-                <a className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-primary hover:shadow-lg">
+              <Link href="/report-issue" className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-primary hover:shadow-lg">
                   <Wrench className="mx-auto size-12 text-primary transition-transform group-hover:scale-110" />
                   <h3 className="mt-4 font-headline text-2xl font-bold">Report an Issue</h3>
                   <p className="mt-2 text-muted-foreground">Notice a problem? Let us know. Help us improve facilities for all pilgrims.</p>
                   <Button variant="link" className="mt-4 text-primary">
                     File a Report <ArrowRight className="ml-2 size-4" />
                   </Button>
-                </a>
               </Link>
-              <Link href="/sos" legacyBehavior passHref>
-                <a className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-destructive hover:shadow-lg">
+              <Link href="/sos" className="group block rounded-lg border bg-background p-6 text-center shadow-sm transition-all hover:border-destructive hover:shadow-lg">
                   <ShieldAlert className="mx-auto size-12 text-destructive transition-transform group-hover:scale-110" />
                   <h3 className="mt-4 font-headline text-2xl font-bold text-destructive">Emergency SOS</h3>
                   <p className="mt-2 text-muted-foreground">In case of a personal emergency, press the button for immediate assistance.</p>
                   <Button variant="link" className="mt-4 text-destructive">
                     Request Help <ArrowRight className="ml-2 size-4" />
                   </Button>
-                </a>
               </Link>
             </div>
           </div>

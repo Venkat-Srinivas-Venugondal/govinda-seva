@@ -12,7 +12,7 @@ export function Header() {
         </Link>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <nav className="flex items-center space-x-1">
-            <Link href="/login" passHref legacyBehavior>
+            <Link href="/login">
               <Button>
                 <LogIn className="mr-2 size-4" />
                 Staff Login
