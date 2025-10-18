@@ -1,9 +1,10 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { predictCrowdAction } from '@/lib/actions';
 import { Button } from './ui/button';
-import { Card, CardContent, CardFooter } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Loader2, Sparkles, Lightbulb, AlertTriangle } from 'lucide-react';
@@ -27,7 +28,7 @@ function SubmitButton() {
 }
 
 export function CrowdPredictorForm() {
-  const [state, formAction] = useFormState(predictCrowdAction, initialState);
+  const [state, formAction] = useActionState(predictCrowdAction, initialState);
 
   return (
     <form action={formAction}>
