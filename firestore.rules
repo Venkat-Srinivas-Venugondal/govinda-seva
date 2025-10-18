@@ -1,146 +1,129 @@
 /**
- * @fileoverview Firestore Security Rules for the devotee app.
- *
- * Core Philosophy:
- * This ruleset prioritizes security by default, enforcing strict access control
- * based on user roles (admin, volunteer, devotee) and resource ownership.
- * Data validation is relaxed to allow for rapid prototyping.
+ * @description This ruleset enforces a role-based access control model.
  *
  * Data Structure:
- * - /issueReports/{issueReportId}: Issue reports submitted by devotees.
- * - /emergencyAlerts/{emergencyAlertId}: Emergency alerts sent by devotees.
- * - /users/{userId}: Public user profiles.
- * - /broadcastMessages/{broadcastMessageId}: Broadcast messages sent by admins.
- * - /roles/{userId}: User roles (isAdmin, isVolunteer).
- * - /darshanTimes/{darshanTimeId}: Darshan wait times.
+ * - /issueReports: Stores issue reports, accessible to authenticated users.
+ * - /emergencyAlerts: Stores emergency alerts, accessible to authenticated users.
+ * - /users: Stores user profiles, owner-only access.
+ * - /broadcastMessages: Stores broadcast messages, writable only by admins.
+ * - /roles: Stores user roles (isAdmin, isVolunteer).
+ * - /darshanTimes: Stores Darshan wait times, writable only by admins.
  *
  * Key Security Decisions:
- * - User listing is generally disallowed to protect privacy.
- * - Public read access is granted only for specific collections (e.g., broadcastMessages).
- * - Owner-only write access is enforced for user-specific data.
- * - Role-based access is used for administrative functions.
+ * - Users can only read and write their own profiles.
+ * - Only admins can create broadcast messages and update Darshan times.
+ * - Listing of users is denied for security reasons.
  *
  * Denormalization for Authorization:
- * - The /roles/{userId} document is used to determine admin/volunteer status.
- *   This avoids complex queries and ensures efficient access control.
+ * - The `roles` collection is used to determine admin/volunteer status.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+          return get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+    }
+
     /**
-     * @description Allows any authenticated user to create issue reports, but restricts read, update, and delete operations.
+     * @description Allows any authenticated user to create issue reports.
      * @path /issueReports/{issueReportId}
-     * @allow (create) - Any authenticated user can create an issue report.
-     * @deny (get, list, update, delete) - Only admins can perform these actions (TODO: Implement admin check).
-     * @principle Allows creation of issue reports by any signed-in user.
+     * @allow (create) User with auth.uid "user123" creates an issue report.
+     * @deny (create) Unauthenticated user tries to create an issue report.
+     * @principle Authenticated users can report issues.
      */
     match /issueReports/{issueReportId} {
-      allow get: if false;
-      allow list: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows any authenticated user to create emergency alerts, but restricts read, update, and delete operations.
+     * @description Allows any authenticated user to create emergency alerts.
      * @path /emergencyAlerts/{emergencyAlertId}
-     * @allow (create) - Any authenticated user can create an emergency alert.
-     * @deny (get, list, update, delete) - Only admins can perform these actions (TODO: Implement admin check).
-     * @principle Allows creation of emergency alerts by any signed-in user.
+     * @allow (create) User with auth.uid "user456" creates an emergency alert.
+     * @deny (create) Unauthenticated user tries to create an emergency alert.
+     * @principle Authenticated users can send emergency alerts.
      */
     match /emergencyAlerts/{emergencyAlertId} {
-      allow get: if false;
-      allow list: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description Allows a user to read and write their own profile.
+     * @description Allows users to read and write their own profile data.
      * @path /users/{userId}
-     * @allow (get, list) User can view their own profile or admins can list all users.
-     * @allow (create) User can create their profile if the userId matches their auth.uid.
-     * @allow (update, delete) User can update/delete their own profile.
-     * @deny (create) User cannot create a profile with a different userId.
-     * @principle Enforces user-ownership for profiles.
+     * @allow (get) User with auth.uid "user789" reads their own profile.
+     * @allow (create) User with auth.uid "user789" creates their own profile.
+     * @allow (update) User with auth.uid "user789" updates their own profile.
+     * @deny (get) User with auth.uid "user789" tries to read another user's profile.
+     * @deny (create) User with auth.uid "user789" tries to create a profile with a different userId.
+     * @deny (update) User with auth.uid "user789" tries to update another user's profile.
+     * @principle Enforces user-ownership for profile data.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isNewOwner(userId);
-      allow update: if isOwner(userId) && isSignedIn();
-      allow delete: if isOwner(userId) && isSignedIn();
+      allow create: if isOwner(userId) && request.resource.data.uid == userId;
+      allow update: if isOwner(userId) && request.resource.data.uid == resource.data.uid;
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Allows anyone to read broadcast messages, but only admins can create, update, or delete them.
+     * @description Allows admins to create broadcast messages.
      * @path /broadcastMessages/{broadcastMessageId}
-     * @allow (get, list) - Anyone can read broadcast messages.
-     * @deny (create, update, delete) - Only admins can create, update, or delete broadcast messages (TODO: Implement admin check).
-     * @principle Allows public read access but restricts write access to admins.
+     * @allow (create) Admin with isAdmin == true creates a broadcast message.
+     * @deny (create) Non-admin user tries to create a broadcast message.
+     * @principle Restricts broadcast message creation to admins.
      */
     match /broadcastMessages/{broadcastMessageId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows a user to read and write their own role.
+     * @description Allows only admins to read and write user roles.
      * @path /roles/{userId}
-     * @allow (get, list) User can view their own roles.
-     * @allow (create) User can create their roles if the userId matches their auth.uid.
-     * @allow (update, delete) User can update/delete their own roles.
-     * @deny (create) User cannot create roles with a different userId.
-     * @principle Enforces user-ownership for roles.
      */
     match /roles/{userId} {
-      allow get: if isOwner(userId);
+      allow get: if isSignedIn() && isAdmin();
       allow list: if false;
-      allow create: if isNewOwner(userId);
-      allow update: if isOwner(userId) && isSignedIn();
-      allow delete: if isOwner(userId) && isSignedIn();
+      allow create: if isSignedIn() && isAdmin();
+      allow update: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && isAdmin();
     }
 
-    /**
-     * @description Allows admins to create, read, update and delete Darshan times.
-     * @path /darshanTimes/{darshanTimeId}
-     * @allow (get, list) - Admins can read darshan times.
-     * @allow (create, update, delete) - Only admins can create, update, or delete darshan times.
-     * @principle Restricts access to admins.
-     */
+      /**
+       * @description Allows admins to create and update Darshan times.
+       * @path /darshanTimes/{darshanTimeId}
+       * @allow (create) Admin user creates Darshan time entry.
+       * @allow (update) Admin user updates Darshan time entry.
+       * @deny (create) Non-admin user tries to create a Darshan time entry.
+       * @deny (update) Non-admin user tries to update a Darshan time entry.
+       * @principle Restricts Darshan time management to admins.
+       */
     match /darshanTimes/{darshanTimeId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
-    }
-  }
-
-  // Helper functions
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  function isOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  function isNewOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  function isExistingOwner(userId) {
-    return isOwner(userId) && resource != null;
-  }
-
-  function isAdmin() {
-    return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+        allow get: if true;
+        allow list: if true;
+        allow create: if isSignedIn() && isAdmin();
+        allow update: if isSignedIn() && isAdmin();
+        allow delete: if false;
+      }
   }
 }
