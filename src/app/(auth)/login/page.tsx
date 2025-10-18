@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -70,6 +71,7 @@ export default function LoginPage() {
   const {
     register: registerEmail,
     handleSubmit: handleEmailSubmit,
+    getValues: getEmailValues,
     formState: { errors: emailErrors },
   } = useForm<EmailFormValues>({ resolver: zodResolver(emailSchema) });
 
@@ -126,26 +128,35 @@ export default function LoginPage() {
     }
   };
   
-  const onEmailSubmit: SubmitHandler<EmailFormValues> = async (data) => {
+  const onEmailSignIn: SubmitHandler<EmailFormValues> = async (data) => {
     if (!auth) return;
     try {
       await signInWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: 'Login Successful', description: `Welcome back, ${role}!` });
       router.push(role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard');
     } catch (error: any) {
-      // If user not found, try to sign them up
-      if (error.code === 'auth/user-not-found') {
-        try {
-          await createUserWithEmailAndPassword(auth, data.email, data.password);
-          toast({ title: 'Account Created', description: `Welcome, ${role}!` });
-           router.push(role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard');
-        } catch (signupError: any) {
-          console.error(`${role} sign-up error:`, signupError);
-          toast({ variant: 'destructive', title: 'Sign-up Error', description: signupError.message });
-        }
+      console.error(`${role} sign-in error:`, error);
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        toast({ variant: 'destructive', title: 'Login Error', description: 'Invalid email or password.' });
       } else {
-        console.error(`${role} sign-in error:`, error);
         toast({ variant: 'destructive', title: 'Login Error', description: error.message });
+      }
+    }
+  };
+
+  const onEmailRegister = async () => {
+    if (!auth) return;
+    const { email, password } = getEmailValues();
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      toast({ title: 'Account Created', description: `Welcome, ${role}!` });
+      router.push(role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard');
+    } catch (error: any) {
+      console.error(`${role} sign-up error:`, error);
+      if (error.code === 'auth/email-already-in-use') {
+        toast({ variant: 'destructive', title: 'Registration Error', description: 'An account with this email already exists.' });
+      } else {
+        toast({ variant: 'destructive', title: 'Registration Error', description: error.message });
       }
     }
   };
@@ -188,7 +199,7 @@ export default function LoginPage() {
               )}
             </TabsContent>
             <TabsContent value="volunteer" className="pt-6">
-               <form onSubmit={handleEmailSubmit(onEmailSubmit)} className="space-y-4">
+               <form onSubmit={handleEmailSubmit(onEmailSignIn)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="volunteer-email">Email</Label>
                   <Input id="volunteer-email" type="email" {...registerEmail('email')} placeholder="volunteer@example.com" />
@@ -199,11 +210,14 @@ export default function LoginPage() {
                   <Input id="volunteer-password" type="password" {...registerEmail('password')} />
                   {emailErrors.password && <p className="text-sm text-destructive">{emailErrors.password.message}</p>}
                 </div>
-                <Button type="submit" className="w-full">Sign In / Register</Button>
+                <div className="flex flex-col space-y-2">
+                    <Button type="submit" className="w-full">Sign In</Button>
+                    <Button type="button" variant="outline" className="w-full" onClick={onEmailRegister}>Register</Button>
+                </div>
               </form>
             </TabsContent>
             <TabsContent value="admin" className="pt-6">
-               <form onSubmit={handleEmailSubmit(onEmailSubmit)} className="space-y-4">
+               <form onSubmit={handleEmailSubmit(onEmailSignIn)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="admin-email">Email</Label>
                   <Input id="admin-email" type="email" {...registerEmail('email')} placeholder="admin@example.com" />
@@ -214,7 +228,10 @@ export default function LoginPage() {
                   <Input id="admin-password" type="password" {...registerEmail('password')} />
                    {emailErrors.password && <p className="text-sm text-destructive">{emailErrors.password.message}</p>}
                 </div>
-                <Button type="submit" className="w-full">Sign In / Register</Button>
+                <div className="flex flex-col space-y-2">
+                    <Button type="submit" className="w-full">Sign In</Button>
+                    <Button type="button" variant="outline" className="w-full" onClick={onEmailRegister}>Register</Button>
+                </div>
               </form>
             </TabsContent>
           </Tabs>
@@ -230,3 +247,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
