@@ -42,8 +42,7 @@ const formSchema = z.object({
 export default function BroadcastPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const auth = useAuth();
-  const { user } = auth;
+  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -66,7 +65,7 @@ export default function BroadcastPage() {
       const broadcastsCollection = collection(firestore, 'broadcastMessages');
       await addDocumentNonBlocking(broadcastsCollection, {
         message: values.message,
-        recipientType: values.target,
+        recipientType: values.target.toLowerCase(), // Save as lowercase
         sentBy: user.uid,
         timestamp: serverTimestamp(),
       });
