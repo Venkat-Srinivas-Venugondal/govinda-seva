@@ -107,7 +107,7 @@ export default function AdminDashboardPage() {
        <div 
         className="absolute inset-0 z-0 opacity-[0.15]" 
         style={{
-          backgroundImage: "url('https://upload.wikimedia.org/wikipedia/en/4/4e/Tirumala_Tirupati_Devasthanams_Logo.svg')",
+          backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/e/e1/TTD-Logo.png')",
           backgroundSize: '300px 300px',
           backgroundRepeat: 'repeat',
         }}
@@ -250,5 +250,3 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
-
-    
