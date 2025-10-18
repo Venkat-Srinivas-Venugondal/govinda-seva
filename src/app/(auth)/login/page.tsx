@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -48,6 +47,12 @@ type EmailFormValues = z.infer<typeof emailSchema>;
 
 const RESEND_TIMEOUT = 60; // seconds
 
+declare global {
+    interface Window {
+        recaptchaVerifier?: RecaptchaVerifier;
+    }
+}
+
 export default function LoginPage() {
   const auth = useAuth();
   const router = useRouter();
@@ -59,33 +64,40 @@ export default function LoginPage() {
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-
   const phoneForm = useForm<PhoneFormValues>({ resolver: zodResolver(phoneSchema) });
   const otpForm = useForm<OtpFormValues>({ resolver: zodResolver(otpSchema) });
   const emailForm = useForm<EmailFormValues>({ resolver: zodResolver(emailSchema) });
 
   const setupRecaptcha = useCallback(() => {
-    if (!auth || !recaptchaContainerRef.current) return;
-    if (recaptchaVerifierRef.current) {
-        recaptchaVerifierRef.current.clear();
+    if (!auth) return;
+    
+    // Cleanup previous verifier if it exists
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
     }
-    recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-      'size': 'invisible',
-      'callback': () => {
-        // reCAPTCHA solved
-      },
-      'expired-callback': () => {
-        toast({ variant: 'destructive', title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.' });
-      }
-    });
-    recaptchaVerifierRef.current.render();
+
+    try {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible',
+            'callback': (response: any) => {
+                // reCAPTCHA solved, allow signInWithPhoneNumber.
+                // This callback is usually executed for invisible reCAPTCHA after the user action.
+            },
+            'expired-callback': () => {
+                // Response expired. Ask user to solve reCAPTCHA again.
+                toast({ variant: 'destructive', title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.' });
+            }
+        });
+    } catch (e) {
+        console.error("Error creating RecaptchaVerifier:", e);
+    }
   }, [auth, toast]);
 
   useEffect(() => {
-    setupRecaptcha();
-  }, [setupRecaptcha]);
+    if(auth) {
+      setupRecaptcha();
+    }
+  }, [auth, setupRecaptcha]);
   
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -98,19 +110,24 @@ export default function LoginPage() {
   }, [isOtpSent, resendTimer]);
 
   const handleSendOtp = async (data: PhoneFormValues) => {
-    if (!auth || !recaptchaVerifierRef.current) return;
+    if (!auth || !window.recaptchaVerifier) {
+      toast({ variant: 'destructive', title: 'Setup Error', description: 'reCAPTCHA is not ready. Please refresh and try again.' });
+      return;
+    }
     setIsSendingOtp(true);
     
     try {
-      const result = await signInWithPhoneNumber(auth, data.phone, recaptchaVerifierRef.current);
+      const verifier = window.recaptchaVerifier;
+      const result = await signInWithPhoneNumber(auth, data.phone, verifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
       setResendTimer(RESEND_TIMEOUT);
       toast({ title: 'OTP Sent', description: 'Check your phone for the verification code.' });
     } catch (error: any) {
       console.error('Phone sign-in error:', error);
-      toast({ variant: 'destructive', title: 'Failed to send OTP', description: 'Please check the number and try again. Ensure you are not using a private browser mode.' });
-      setupRecaptcha(); // Reset reCAPTCHA on failure
+      toast({ variant: 'destructive', title: 'Failed to send OTP', description: error.message || 'Please check the number and try again.' });
+      // Reset reCAPTCHA on failure
+      setupRecaptcha();
     } finally {
       setIsSendingOtp(false);
     }
@@ -143,7 +160,7 @@ export default function LoginPage() {
       router.push(role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard');
     } catch (error: any) {
       console.error(`${role} sign-in error:`, error);
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      if (error.code === 'auth/invalid-credential') {
         toast({ variant: 'destructive', title: 'Login Error', description: 'Invalid email or password.' });
       } else {
         toast({ variant: 'destructive', title: 'Login Error', description: error.message });
@@ -170,7 +187,7 @@ export default function LoginPage() {
 
   return (
     <div className="container flex min-h-screen items-center justify-center py-12">
-      <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
+      <div id="recaptcha-container"></div>
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
           <CardTitle className="font-headline text-3xl">Govinda Seva Portal</CardTitle>
@@ -274,5 +291,4 @@ export default function LoginPage() {
     </div>
   );
 }
-
     
