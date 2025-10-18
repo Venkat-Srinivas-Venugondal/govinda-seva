@@ -134,7 +134,7 @@ export default function LoginPage() {
       router.push(role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard');
     } catch (error: any) {
       // If user not found, try to sign them up
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+      if (error.code === 'auth/user-not-found') {
         try {
           await createUserWithEmailAndPassword(auth, data.email, data.password);
           toast({ title: 'Account Created', description: `Welcome, ${role}!` });
@@ -230,5 +230,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
