@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -15,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import {
   signInWithEmailAndPassword,
   sendEmailVerification,
@@ -32,14 +33,18 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+export default function DevoteeLoginPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [needsVerification, setNeedsVerification] = useState<FirebaseUser | null>(null);
 
-  const loginForm = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
 
   const onLoginSubmit: SubmitHandler<LoginFormValues> = async (data) => {
     if (!auth) return;
@@ -54,37 +59,26 @@ export default function LoginPage() {
         toast({
           variant: 'destructive',
           title: 'Email Not Verified',
-          description: 'Please verify your email address to log in. You can resend the verification email.',
+          description: 'Please check your email to verify your account.',
         });
         setLoading(false);
         return;
       }
       
       toast({ title: 'Login Successful', description: `Welcome back!` });
-      
-      // A simple redirect logic. You might want to enhance this based on user roles from Firestore.
       router.push('/'); 
-
     } catch (error: any) {
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        toast({
+       toast({
           variant: 'destructive',
           title: 'Login Failed',
-          description: 'The email or password you entered is incorrect.',
+          description: 'Incorrect email or password.',
         });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'An Error Occurred',
-          description: error.message,
-        });
-      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResendVerification = async () => {
+   const handleResendVerification = async () => {
     if (!needsVerification) return;
     setLoading(true);
     try {
@@ -104,27 +98,28 @@ export default function LoginPage() {
     }
   };
 
+
   return (
     <div className="container flex min-h-screen items-center justify-center py-12">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle className="font-headline text-3xl">Govinda Seva Portal</CardTitle>
-          <CardDescription>Welcome back! Please sign in to continue.</CardDescription>
+          <CardTitle className="font-headline text-3xl">Devotee Login</CardTitle>
+          <CardDescription>Sign in to access pilgrim services.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="space-y-4" onSubmit={loginForm.handleSubmit(onLoginSubmit)}>
+          <form className="space-y-4" onSubmit={handleSubmit(onLoginSubmit)}>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...loginForm.register('email')} placeholder="you@example.com" />
-              {loginForm.formState.errors.email && <p className="text-sm text-destructive">{loginForm.formState.errors.email.message}</p>}
+              <Input id="email" type="email" {...register('email')} placeholder="you@example.com" />
+              {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" {...loginForm.register('password')} />
-              {loginForm.formState.errors.password && <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>}
+              <Input id="password" type="password" {...register('password')} />
+              {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
             
-            {needsVerification ? (
+             {needsVerification ? (
                <div className="flex flex-col space-y-2 text-center">
                   <p className="text-sm text-muted-foreground">Your email is not verified.</p>
                   <Button type="button" variant="secondary" onClick={handleResendVerification} disabled={loading}>
@@ -141,15 +136,14 @@ export default function LoginPage() {
           </form>
 
            <div className="mt-6 text-center text-sm">
-            Don't have an account?{' '}
+            {"Don't have an account?"}{' '}
             <Link href="/register" className="text-primary hover:underline">
               Sign Up <ArrowRight className="inline-block size-4" />
             </Link>
           </div>
-          <div className="mt-4 text-center text-sm">
-            <Link href="/" className="text-primary hover:underline flex items-center justify-center">
-              <ArrowRight className="size-4 mr-2 transform rotate-180" />
-              Back to Home
+           <div className="mt-4 text-center text-sm">
+            <Link href="/login" className="text-muted-foreground hover:underline">
+             Not a devotee?
             </Link>
           </div>
         </CardContent>
