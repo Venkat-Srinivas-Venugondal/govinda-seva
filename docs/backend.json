@@ -227,9 +227,7 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous",
-      "phone"
+      "password"
     ]
   },
   "firestore": {
