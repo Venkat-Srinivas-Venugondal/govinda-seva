@@ -22,7 +22,7 @@ export default function ReportIssuePage() {
                     alt={reportIssueImage.description}
                     fill
                     className="object-cover rounded-lg"
-                    data-ai-hint={reportIssueiImage.imageHint}
+                    data-ai-hint={reportIssueImage.imageHint}
                   />
               </div>
             )}
