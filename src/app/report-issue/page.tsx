@@ -21,7 +21,7 @@ export default function ReportIssuePage() {
                     src={reportIssueImage.imageUrl}
                     alt={reportIssueImage.description}
                     fill
-                    className="object-cover rounded-lg"
+                    className="object-contain rounded-lg"
                     data-ai-hint={reportIssueImage.imageHint}
                   />
               </div>
