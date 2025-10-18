@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Siren, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { useAuth, useFirestore, addDocumentNonBlocking } from '@/firebase';
+import { useUser, useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection, serverTimestamp } from 'firebase/firestore';
 
 type SosStatus = 'idle' | 'sending' | 'success' | 'error';
@@ -14,8 +14,7 @@ export function SosButton() {
   const [status, setStatus] = useState<SosStatus>('idle');
   const { toast } = useToast();
   const firestore = useFirestore();
-  const auth = useAuth();
-  const { user } = auth;
+  const { user } = useUser();
 
   const handleSosClick = () => {
     if (status === 'sending') return;
