@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
       className="relative min-h-screen p-4 md:p-8"
     >
        <div 
-        className="absolute inset-0 z-0 opacity-50" 
+        className="absolute inset-0 z-0 opacity-75" 
         style={{
           backgroundImage: "url('https://upload.wikimedia.org/wikipedia/commons/e/e1/TTD-Logo.png')",
           backgroundSize: 'contain',
