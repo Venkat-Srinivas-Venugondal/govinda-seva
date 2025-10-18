@@ -16,7 +16,7 @@ export default function ReportIssuePage() {
           <div className="grid md:grid-cols-2 gap-8 items-center max-w-5xl mx-auto">
             <ReportIssueForm />
             {reportIssueImage && (
-              <div className="relative aspect-square hidden md:block">
+              <div className="relative h-[550px] hidden md:block">
                   <Image
                     src={reportIssueImage.imageUrl}
                     alt={reportIssueImage.description}
