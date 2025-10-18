@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +26,7 @@ import {
   ConfirmationResult,
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowRight, Shield, User, UserCheck } from 'lucide-react';
+import { ArrowRight, Loader2, Shield, User, UserCheck } from 'lucide-react';
 import Link from 'next/link';
 
 const phoneSchema = z.object({
@@ -46,6 +46,8 @@ type PhoneFormValues = z.infer<typeof phoneSchema>;
 type OtpFormValues = z.infer<typeof otpSchema>;
 type EmailFormValues = z.infer<typeof emailSchema>;
 
+const RESEND_TIMEOUT = 60; // seconds
+
 export default function LoginPage() {
   const auth = useAuth();
   const router = useRouter();
@@ -53,68 +55,83 @@ export default function LoginPage() {
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [role, setRole] = useState<'devotee' | 'volunteer' | 'admin'>('devotee');
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
 
-  // Separate forms for each step
   const phoneForm = useForm<PhoneFormValues>({ resolver: zodResolver(phoneSchema) });
   const otpForm = useForm<OtpFormValues>({ resolver: zodResolver(otpSchema) });
   const emailForm = useForm<EmailFormValues>({ resolver: zodResolver(emailSchema) });
 
-  // Initialize RecaptchaVerifier
-  useEffect(() => {
-    if (!auth || !recaptchaContainerRef.current || (window as any).recaptchaVerifier) return;
-
-    (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+  const setupRecaptcha = useCallback(() => {
+    if (!auth || !recaptchaContainerRef.current) return;
+    if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+    }
+    recaptchaVerifierRef.current = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
       'size': 'invisible',
       'callback': () => {
-        // reCAPTCHA solved, you can proceed with phone sign-in.
+        // reCAPTCHA solved
       },
       'expired-callback': () => {
         toast({ variant: 'destructive', title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.' });
       }
     });
-
-    (window as any).recaptchaVerifier.render();
-
-    return () => {
-      if ((window as any).recaptchaVerifier) {
-        (window as any).recaptchaVerifier.clear();
-      }
-    };
+    recaptchaVerifierRef.current.render();
   }, [auth, toast]);
-  
-  const onPhoneSubmit: SubmitHandler<PhoneFormValues> = async (data) => {
-    if (!auth) return;
-    const appVerifier = (window as any).recaptchaVerifier;
 
+  useEffect(() => {
+    setupRecaptcha();
+  }, [setupRecaptcha]);
+  
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isOtpSent && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isOtpSent, resendTimer]);
+
+  const handleSendOtp = async (data: PhoneFormValues) => {
+    if (!auth || !recaptchaVerifierRef.current) return;
+    setIsSendingOtp(true);
+    
     try {
-      const result = await signInWithPhoneNumber(auth, data.phone, appVerifier);
+      const result = await signInWithPhoneNumber(auth, data.phone, recaptchaVerifierRef.current);
       setConfirmationResult(result);
       setIsOtpSent(true);
+      setResendTimer(RESEND_TIMEOUT);
       toast({ title: 'OTP Sent', description: 'Check your phone for the verification code.' });
     } catch (error: any) {
       console.error('Phone sign-in error:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to send OTP. Ensure your number is correct and you have passed the reCAPTCHA check.' });
-      // Reset reCAPTCHA
-      if ((window as any).grecaptcha && (window as any).recaptchaVerifier) {
-          const widgetId = (window as any).recaptchaVerifier.widgetId;
-          if(widgetId !== undefined) {
-             (window as any).grecaptcha.reset(widgetId);
-          }
-      }
+      toast({ variant: 'destructive', title: 'Failed to send OTP', description: 'Please check the number and try again. Ensure you are not using a private browser mode.' });
+      setupRecaptcha(); // Reset reCAPTCHA on failure
+    } finally {
+      setIsSendingOtp(false);
     }
+  };
+
+  const onPhoneSubmit: SubmitHandler<PhoneFormValues> = (data) => {
+    handleSendOtp(data);
   };
 
   const onOtpSubmit: SubmitHandler<OtpFormValues> = async (data) => {
     if (!confirmationResult) return;
+    setIsVerifyingOtp(true);
     try {
       await confirmationResult.confirm(data.otp);
       toast({ title: 'Success', description: 'You are now logged in.' });
       router.push('/'); // Redirect to devotee dashboard or homepage
     } catch (error: any) {
       console.error('OTP confirmation error:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Invalid OTP. Please try again.' });
+      toast({ variant: 'destructive', title: 'Invalid OTP', description: 'The code you entered is incorrect. Please try again.' });
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
   
@@ -134,15 +151,10 @@ export default function LoginPage() {
     }
   };
 
-  const onEmailRegister = async () => {
+  const onEmailRegister: SubmitHandler<EmailFormValues> = async (data) => {
     if (!auth) return;
-    const { email, password } = emailForm.getValues();
-     if (!email || !password) {
-      emailForm.trigger();
-      return;
-    }
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      await createUserWithEmailAndPassword(auth, data.email, data.password);
       toast({ title: 'Account Created', description: `Welcome, ${role}!` });
       router.push(role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard');
     } catch (error: any) {
@@ -179,21 +191,40 @@ export default function LoginPage() {
                     <Input id="phone" {...phoneForm.register('phone')} placeholder="+919876543210" />
                     {phoneForm.formState.errors.phone && <p className="text-sm text-destructive">{phoneForm.formState.errors.phone.message}</p>}
                   </div>
-                  <Button type="submit" className="w-full">Send OTP</Button>
+                  <Button type="submit" className="w-full" disabled={isSendingOtp}>
+                    {isSendingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send OTP
+                  </Button>
                 </form>
               ) : (
                 <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
+                   <div className="text-center text-sm text-muted-foreground">
+                    An OTP has been sent to {phoneForm.getValues('phone')}.
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="otp">One-Time Password</Label>
                     <Input id="otp" {...otpForm.register('otp')} placeholder="123456" />
                     {otpForm.formState.errors.otp && <p className="text-sm text-destructive">{otpForm.formState.errors.otp.message}</p>}
                   </div>
-                  <Button type="submit" className="w-full">Verify OTP</Button>
+                   <Button type="submit" className="w-full" disabled={isVerifyingOtp}>
+                    {isVerifyingOtp && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Verify OTP
+                  </Button>
+                  <div className="text-center text-sm">
+                     <Button 
+                      variant="link" 
+                      type="button" 
+                      disabled={resendTimer > 0} 
+                      onClick={() => onPhoneSubmit(phoneForm.getValues())}
+                    >
+                      {resendTimer > 0 ? `Resend OTP in ${resendTimer}s` : 'Resend OTP'}
+                    </Button>
+                  </div>
                 </form>
               )}
             </TabsContent>
             <TabsContent value="volunteer" className="pt-6">
-               <form onSubmit={emailForm.handleSubmit(onEmailSignIn)} className="space-y-4">
+               <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-2">
                   <Label htmlFor="volunteer-email">Email</Label>
                   <Input id="volunteer-email" type="email" {...emailForm.register('email')} placeholder="volunteer@example.com" />
@@ -205,13 +236,14 @@ export default function LoginPage() {
                   {emailForm.formState.errors.password && <p className="text-sm text-destructive">{emailForm.formState.errors.password.message}</p>}
                 </div>
                 <div className="flex flex-col space-y-2">
-                    <Button type="submit" className="w-full">Sign In</Button>
-                    <Button type="button" variant="outline" className="w-full" onClick={onEmailRegister}>Register</Button>
+                    <Button type="button" className="w-full" onClick={emailForm.handleSubmit(onEmailSignIn)}>Sign In</Button>
+                    <p className="text-center text-sm text-muted-foreground">New here?</p>
+                    <Button type="button" variant="outline" className="w-full" onClick={emailForm.handleSubmit(onEmailRegister)}>Register</Button>
                 </div>
               </form>
             </TabsContent>
             <TabsContent value="admin" className="pt-6">
-               <form onSubmit={emailForm.handleSubmit(onEmailSignIn)} className="space-y-4">
+               <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
                 <div className="space-y-2">
                   <Label htmlFor="admin-email">Email</Label>
                   <Input id="admin-email" type="email" {...emailForm.register('email')} placeholder="admin@example.com" />
@@ -223,8 +255,9 @@ export default function LoginPage() {
                    {emailForm.formState.errors.password && <p className="text-sm text-destructive">{emailForm.formState.errors.password.message}</p>}
                 </div>
                 <div className="flex flex-col space-y-2">
-                    <Button type="submit" className="w-full">Sign In</Button>
-                    <Button type="button" variant="outline" className="w-full" onClick={onEmailRegister}>Register</Button>
+                    <Button type="button" className="w-full" onClick={emailForm.handleSubmit(onEmailSignIn)}>Sign In</Button>
+                     <p className="text-center text-sm text-muted-foreground">New here?</p>
+                    <Button type="button" variant="outline" className="w-full" onClick={emailForm.handleSubmit(onEmailRegister)}>Register</Button>
                 </div>
               </form>
             </TabsContent>
@@ -242,5 +275,4 @@ export default function LoginPage() {
   );
 }
 
-    
     
