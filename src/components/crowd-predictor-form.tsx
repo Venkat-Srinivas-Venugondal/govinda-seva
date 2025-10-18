@@ -41,13 +41,6 @@ export function CrowdPredictorForm() {
           )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="parkingAvailability">Parking Availability</Label>
-          <Input id="parkingAvailability" name="parkingAvailability" defaultValue="Limited spots available in main areas" required />
-          {state.inputErrors?.find(e => e.path.includes('parkingAvailability')) && (
-            <p className="text-sm text-destructive">{state.inputErrors.find(e => e.path.includes('parkingAvailability'))?.message}</p>
-          )}
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="specialEvents">Special Events</Label>
           <Input id="specialEvents" name="specialEvents" defaultValue="Pournami Garuda Seva this evening" required />
            {state.inputErrors?.find(e => e.path.includes('specialEvents')) && (
@@ -102,3 +95,5 @@ export function CrowdPredictorForm() {
     </form>
   );
 }
+
+    

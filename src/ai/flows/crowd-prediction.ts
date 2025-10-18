@@ -15,11 +15,6 @@ const CrowdPredictionInputSchema = z.object({
   currentDarshanWaitTime: z
     .number()
     .describe('The current estimated darshan wait time in minutes.'),
-  parkingAvailability: z
-    .string()
-    .describe(
-      'A description of the current parking availability, e.g., "75% full"'
-    ),
   specialEvents: z
     .string()
     .describe(
@@ -50,7 +45,6 @@ const prompt = ai.definePrompt({
     prompt: `You are an AI assistant for the Govinda Seva temple management app. Your task is to predict crowd conditions based on the following real-time data:
 
 - Current Darshan Wait Time: {{{currentDarshanWaitTime}}} minutes
-- Parking Availability: {{{parkingAvailability}}}
 - Special Events: {{{specialEvents}}}
 - Weather: {{{weather}}}
 
@@ -59,7 +53,7 @@ Analyze this information and provide a prediction with the following fields:
 2.  **congestionLevel**: Predict the level of crowding in key areas like the main temple, queue complexes, and prasadam counters (e.g., Low, Moderate, High).
 3.  **reasoning**: Briefly explain why you made this prediction, citing the provided data.
 
-Higher current wait times, limited parking, special events, and pleasant weather usually indicate higher future wait times and congestion.
+Higher current wait times, special events, and pleasant weather usually indicate higher future wait times and congestion.
 `,
 });
 
@@ -75,3 +69,5 @@ const predictCrowdFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    

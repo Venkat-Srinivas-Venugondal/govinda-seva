@@ -5,7 +5,6 @@ import { predictCrowd } from '@/ai/flows/crowd-prediction';
 
 const CrowdPredictionInputSchema = z.object({
   currentDarshanWaitTime: z.coerce.number().min(0, "Wait time cannot be negative."),
-  parkingAvailability: z.string().min(1, "Parking availability is required."),
   specialEvents: z.string().min(1, "Special events information is required."),
   weather: z.string().min(1, "Weather information is required."),
 });
@@ -26,7 +25,6 @@ export async function predictCrowdAction(
 ): Promise<PredictionState> {
   const validatedFields = CrowdPredictionInputSchema.safeParse({
     currentDarshanWaitTime: formData.get('currentDarshanWaitTime'),
-    parkingAvailability: formData.get('parkingAvailability'),
     specialEvents: formData.get('specialEvents'),
     weather: formData.get('weather'),
   });
