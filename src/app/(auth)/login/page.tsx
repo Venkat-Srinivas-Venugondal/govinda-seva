@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -72,35 +72,34 @@ export default function LoginPage() {
   } = useForm<EmailFormValues>({ resolver: zodResolver(emailSchema) });
 
 
-  const setupRecaptcha = () => {
-    if (!auth) return;
-    // It's important that the container is visible.
-    // We can hide it with CSS if needed, but it must be in the DOM.
-    if (!(window as any).recaptchaVerifier) {
-      (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-        },
-      });
-    }
-  };
+  useEffect(() => {
+    if (!auth || (window as any).recaptchaVerifier) return;
+
+    (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+      'callback': (response: any) => {
+        // reCAPTCHA solved, allow signInWithPhoneNumber.
+      }
+    });
+
+  }, [auth]);
   
   const onPhoneSubmit: SubmitHandler<PhoneFormValues> = async (data) => {
     if (!auth) return;
-    setupRecaptcha();
     const appVerifier = (window as any).recaptchaVerifier;
     try {
       const result = await signInWithPhoneNumber(auth, data.phone, appVerifier);
       setConfirmationResult(result);
       setIsOtpSent(true);
       toast({ title: 'OTP Sent', description: 'Check your phone for the verification code.' });
-    } catch (error: any) {
+    } catch (error: any)
+{
       console.error('Phone sign-in error:', error);
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
-      (window as any).recaptchaVerifier.render().then((widgetId: any) => {
-        grecaptcha.reset(widgetId);
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to send OTP. Please ensure your phone number is correct and try again.' });
+      // Reset reCAPTCHA
+      if ((window as any).grecaptcha && (window as any).recaptchaWidgetId !== undefined) {
+        (window as any).grecaptcha.reset((window as any).recaptchaWidgetId);
+      }
     }
   };
 
@@ -124,7 +123,7 @@ export default function LoginPage() {
       router.push(role === 'admin' ? '/admin/dashboard' : '/volunteer/dashboard');
     } catch (error: any) {
       // If user not found, try to sign them up
-      if (error.code === 'auth/user-not-found') {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
         try {
           await createUserWithEmailAndPassword(auth, data.email, data.password);
           toast({ title: 'Account Created', description: `Welcome, ${role}!` });
@@ -156,6 +155,7 @@ export default function LoginPage() {
               <TabsTrigger value="admin"><Shield className="mr-2" />Admin</TabsTrigger>
             </TabsList>
             <TabsContent value="devotee" className="pt-6">
+               <div id="recaptcha-container"></div>
               {!isOtpSent ? (
                 <form onSubmit={handlePhoneSubmit(onPhoneSubmit)} className="space-y-4">
                   <div className="space-y-2">
@@ -163,7 +163,6 @@ export default function LoginPage() {
                     <Input id="phone" {...registerPhone('phone')} placeholder="+919876543210" />
                     {phoneErrors.phone && <p className="text-sm text-destructive">{phoneErrors.phone.message}</p>}
                   </div>
-                  <div id="recaptcha-container"></div>
                   <Button type="submit" className="w-full">Send OTP</Button>
                 </form>
               ) : (

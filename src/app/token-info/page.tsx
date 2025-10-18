@@ -1,35 +1,44 @@
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Info, Ticket, Clock, MapPin } from 'lucide-react';
+import { Info, Ticket, Clock, MapPin, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 
 const tokenLocations = [
     {
         type: 'Slotted Sarva Darshan (SSD) - Free',
         locations: [
-            'Bhudevi Complex, near Alipiri',
+            'Bhudevi Complex, near Alipiri, Tirupati',
             'Srinivasam Complex, opposite Tirupati bus station',
             'Govindaraju Satram, behind Tirupati railway station'
         ],
-        timings: '24/7, but issued for the next day. Limited quantity.'
+        timings: '24/7, but tokens are issued for the next day. Limited quantity.'
     },
     {
         type: 'Special Entry Darshan (Seeghra Darshan) - ₹300',
         locations: [
             'Online booking at tirupatibalaji.ap.gov.in',
-            'Limited current booking at Srinivasam Complex'
+            'Limited current booking at Srinivasam Complex, Tirupati'
         ],
-        timings: 'Online quota released periodically. Check website for details.'
+        timings: 'Online quota is released periodically. Check the official TTD website for details.'
     },
     {
         type: 'Divya Darshan - For Pedestrians',
         locations: [
-            'Alipiri Mettu (starting point of the main footpath)',
-            'Srivari Mettu (shorter footpath)'
+            'Alipiri Mettu footpath, Tirupati',
+            'Srivari Mettu footpath, Srinivasa Mangapuram'
         ],
-        timings: 'Available along the footpath routes for pilgrims walking to Tirumala.'
+        timings: 'Available at the starting points of the footpaths for pilgrims walking to Tirumala.'
     }
 ]
+
+const createMapLink = (location: string) => {
+    if (location.startsWith('Online')) {
+        return 'https://tirupatibalaji.ap.gov.in/';
+    }
+    const encodedLocation = encodeURIComponent(location);
+    return `https://www.google.com/maps/search/?api=1&query=${encodedLocation}`;
+}
 
 export default function TokenInfoPage() {
   return (
@@ -46,7 +55,7 @@ export default function TokenInfoPage() {
                 <div>
                   <CardTitle className="font-headline text-3xl">Darshan Token Information</CardTitle>
                   <CardDescription>
-                    Locations and timings for obtaining Darshan tokens.
+                    Locations and timings for obtaining Darshan tokens in Tirupati.
                   </CardDescription>
                 </div>
               </div>
@@ -61,8 +70,20 @@ export default function TokenInfoPage() {
                         <div className="mt-4 space-y-4">
                             <div>
                                 <h4 className="font-bold flex items-center gap-2 text-lg"><MapPin className="size-5"/>Locations</h4>
-                                <ul className="mt-2 list-disc pl-6 text-muted-foreground space-y-1">
-                                    {token.locations.map(loc => <li key={loc}>{loc}</li>)}
+                                <ul className="mt-2 list-none pl-0 space-y-2">
+                                    {token.locations.map(loc => (
+                                        <li key={loc}>
+                                             <Link
+                                                href={createMapLink(loc)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
+                                            >
+                                                {loc}
+                                                <ExternalLink className="size-4 shrink-0" />
+                                            </Link>
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
                              <div>
@@ -73,7 +94,7 @@ export default function TokenInfoPage() {
                     </div>
                 ))}
                 <div className="text-center text-sm text-muted-foreground pt-4">
-                    <p>Note: Information is subject to change. Please verify with official TTD sources.</p>
+                    <p>Note: Information is subject to change. Always verify with official TTD sources before your visit.</p>
                 </div>
             </CardContent>
           </Card>
