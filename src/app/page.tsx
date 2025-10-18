@@ -42,12 +42,6 @@ export default function Home() {
       description: 'Estimated time from VQC-II',
     },
     {
-      title: 'Parking Availability',
-      value: '75%',
-      icon: <Car className="size-8 text-primary" />,
-      description: 'Main parking area',
-    },
-    {
       title: 'Crowd Inflow',
       value: 'High',
       icon: <Users className="size-8 text-primary" />,
@@ -92,7 +86,7 @@ export default function Home() {
         )}
 
         <section className="container mx-auto px-4 py-12 md:py-16">
-          <div className="grid gap-8 md:grid-cols-3">
+          <div className="grid gap-8 md:grid-cols-2">
             {infoCards.map((card) => (
               <Card key={card.title} className="transform transition-transform duration-300 hover:scale-105 hover:shadow-xl">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
