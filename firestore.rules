@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Checks if the current user is signed in.
+     * @returns {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the user ID matches the authenticated user's ID.
+     * @param {string} userId - The user ID to check.
+     * @returns {boolean} True if the user ID matches the authenticated user's ID, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user is an existing owner (signed in, owner of the document, and document exists).
+     * @param {string} userId - The user ID to check.
+     * @returns {boolean} True if the user is an existing owner, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && exists(resource.data);
+    }
+
+    /**
+     * @description Checks if the user has the 'admin' role.
+     * @returns {boolean} True if the user has the 'admin' role, false otherwise.
+     */
+    function isAdmin() {
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * @description Checks if the user has the 'volunteer' role.
+     * @returns {boolean} True if the user has the 'volunteer' role, false otherwise.
+     */
+    function isVolunteer() {
+        return exists(/databases/$(database)/documents/roles_volunteer/$(request.auth.uid));
+    }
+
+    /**
+     * @description Checks if the current user is assigned as a volunteer to the issue report.
+     * @returns {boolean} True if the current user is an assigned volunteer, false otherwise.
+     */
+    function isAssignedVolunteer() {
+      return isSignedIn() && resource.data.assignedVolunteers[request.auth.uid] == true;
+    }
+
+    /**
+     * @description Rules for /issueReports/{issueReportId}
+     * @path /issueReports/{issueReportId}
+     * @allow (read) Signed-in user can get any issueReport.
+     * @allow (create) Signed-in user can create an issueReport if `reportedBy` matches their UID.
+     * @allow (update) Signed-in user can update if they are assigned as a volunteer, or they are an admin.
+     * @allow (delete) Signed-in user can delete if they are assigned as a volunteer, or they are an admin.
+     * @deny (create) An anonymous user tries to create an issue report.
+     * @principle Allows anyone to read issue reports but restricts creation, updates, and deletion to specific roles (assigned volunteer or admin).
+     */
+    match /issueReports/{issueReportId} {
+      // Anyone can read
+      allow get: if true;
+      allow list: if true;
+
+      // Devotee can create if they are the reporter.
+      allow create: if isSignedIn() && request.resource.data.reportedBy == request.auth.uid;
+
+      // Only assigned volunteers or admins can update or delete.
+      allow update: if isSignedIn() && (get(resource.data.assignedVolunteers)[request.auth.uid] == true || isAdmin());
+      allow delete: if isSignedIn() && (get(resource.data.assignedVolunteers)[request.auth.uid] == true || isAdmin());
+    }
+
+    /**
+     * @description Rules for /emergencyAlerts/{emergencyAlertId}
+     * @path /emergencyAlerts/{emergencyAlertId}
+     * @allow (read) Admins can read any emergencyAlert.
+     * @allow (create) Admins can create emergencyAlerts.
+     * @allow (update) Admins can update emergencyAlerts.
+     * @allow (delete) Admins can delete emergencyAlerts.
+     * @deny (read) Non-admins cannot read emergencyAlerts.
+     * @principle Emergency alerts are restricted to admin-only access.
+     */
+    match /emergencyAlerts/{emergencyAlertId} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for /devotees/{devoteeId}
+     * @path /devotees/{devoteeId}
+     * @allow (read) Devotee can read their own profile or admin can read any profile.
+     * @allow (create) Devotee can create their own profile.
+     * @allow (update) Devotee can update their own profile or admin can update any profile.
+     * @allow (delete) Devotee can delete their own profile or admin can delete any profile.
+     * @deny (read) A devotee tries to read another devotee's profile.
+     * @principle Enforces devotee ownership for profile management, with admin override.
+     */
+    match /devotees/{devoteeId} {
+      allow get: if isOwner(devoteeId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(devoteeId) && request.resource.data.id == devoteeId;
+      allow update: if isOwner(devoteeId) || isAdmin();
+      allow delete: if isOwner(devoteeId) || isAdmin();
+    }
+
+    /**
+     * @description Rules for /volunteers/{volunteerId}
+     * @path /volunteers/{volunteerId}
+     * @allow (read) Volunteer can read their own profile or admin can read any profile.
+     * @allow (create) Volunteer can create their own profile.
+     * @allow (update) Volunteer can update their own profile or admin can update any profile.
+     * @allow (delete) Volunteer can delete their own profile or admin can delete any profile.
+     * @deny (read) A volunteer tries to read another volunteer's profile.
+     * @principle Enforces volunteer ownership for profile management, with admin override.
+     */
+    match /volunteers/{volunteerId} {
+      allow get: if isOwner(volunteerId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(volunteerId) && request.resource.data.id == volunteerId;
+      allow update: if isOwner(volunteerId) || isAdmin();
+      allow delete: if isOwner(volunteerId) || isAdmin();
+    }
+
+    /**
+     * @description Rules for /admins/{adminId}
+     * @path /admins/{adminId}
+     * @allow (read) Admin can read their own profile or another admin can read.
+     * @allow (create) Admin can create their own profile.
+     * @allow (update) Admin can update their own profile.
+     * @allow (delete) Admin can delete their own profile.
+     * @deny (read) A non-admin tries to read an admin profile.
+     * @principle Enforces admin ownership for profile management.
+     */
+    match /admins/{adminId} {
+      allow get: if isOwner(adminId) && isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(adminId) && isAdmin() && request.resource.data.id == adminId;
+      allow update: if isOwner(adminId) && isAdmin();
+      allow delete: if isOwner(adminId) && isAdmin();
+    }
+
+    /**
+     * @description Rules for /broadcastMessages/{broadcastMessageId}
+     * @path /broadcastMessages/{broadcastMessageId}
+     * @allow (read) Anyone can read broadcastMessages.
+     * @allow (create) Admins can create broadcastMessages.
+     * @allow (update) Admins can update broadcastMessages.
+     * @allow (delete) Admins can delete broadcastMessages.
+     * @deny (create) Non-admins cannot create broadcast messages.
+     * @principle Broadcast messages are readable by anyone but creatable, updatable, and deletable only by admins.
+     */
+    match /broadcastMessages/{broadcastMessageId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for /roles_admin/{userId}
+     * @path /roles_admin/{userId}
+     * @allow (read) Anyone can get these documents.
+     * @allow (create) Only admins can create admin role assignments.
+     * @allow (update) No updates allowed.
+     * @allow (delete) Only admins can delete admin role assignments.
+     * @principle Admin role management is restricted to admins only.
+     */
+    match /roles_admin/{userId} {
+        allow get: if true;
+        allow list: if false;
+        allow create: if isAdmin();
+        allow update: if false;
+        allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for /roles_volunteer/{userId}
+     * @path /roles_volunteer/{userId}
+     * @allow (read) Anyone can get these documents.
+     * @allow (create) Admins can create volunteer role assignments.
+     * @allow (update) No updates allowed.
+     * @allow (delete) Only admins can delete volunteer role assignments.
+     */
+    match /roles_volunteer/{userId} {
+        allow get: if true;
+        allow list: if false;
+        allow create: if isAdmin();
+        allow update: if false;
+        allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for /users/{userId}/devoteeData
+     * @path /users/{userId}/devoteeData
+     * @allow (read) Devotee can read their own data, or admin can read it.
+     * @allow (create) Devotee can create their own data.
+     * @allow (update) Devotee can update their own data, or admin can update it.
+     * @allow (delete) Devotee can delete their own data, or admin can delete it.
+     * @principle Restricts access to user-specific data to the owner and admins.
+     */
+    match /users/{userId}/devoteeData {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) || isAdmin());
+      allow delete: if (isOwner(userId) || isAdmin());
+    }
+  }
+}
