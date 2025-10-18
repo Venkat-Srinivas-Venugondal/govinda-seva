@@ -32,7 +32,7 @@ const CrowdPredictionInputSchema = z.object({
 export type CrowdPredictionInput = z.infer<typeof CrowdPredictionInputSchema>;
 
 const CrowdPredictionOutputSchema = z.object({
-    predictedInflow: z.string().describe('The predicted crowd inflow level (e.g., Low, Medium, High, Very High).'),
+    predictedDarshanTime: z.string().describe('The predicted Darshan wait time in minutes or hours (e.g., "90-120 minutes", "Approx. 2 hours").'),
     congestionLevel: z.string().describe('The predicted congestion level in key areas (e.g., Low, Moderate, High).'),
     reasoning: z.string().describe('A brief explanation for the prediction.'),
 });
@@ -47,7 +47,7 @@ const prompt = ai.definePrompt({
     name: 'crowdPredictionPrompt',
     input: { schema: CrowdPredictionInputSchema },
     output: { schema: CrowdPredictionOutputSchema },
-    prompt: `You are an AI assistant for the Govinda Seva temple management app. Your task is to predict crowd inflow and congestion levels based on the following real-time data:
+    prompt: `You are an AI assistant for the Govinda Seva temple management app. Your task is to predict crowd conditions based on the following real-time data:
 
 - Current Darshan Wait Time: {{{currentDarshanWaitTime}}} minutes
 - Parking Availability: {{{parkingAvailability}}}
@@ -55,11 +55,11 @@ const prompt = ai.definePrompt({
 - Weather: {{{weather}}}
 
 Analyze this information and provide a prediction with the following fields:
-1.  **predictedInflow**: Estimate the overall crowd movement into the temple complex (e.g., Low, Medium, High, Very High).
+1.  **predictedDarshanTime**: Estimate the upcoming Darshan wait time based on the data. Provide it as a range or an approximation (e.g., "90-120 minutes", "Approx. 2 hours").
 2.  **congestionLevel**: Predict the level of crowding in key areas like the main temple, queue complexes, and prasadam counters (e.g., Low, Moderate, High).
 3.  **reasoning**: Briefly explain why you made this prediction, citing the provided data.
 
-Higher wait times, limited parking, special events, and pleasant weather usually indicate higher inflow and congestion.
+Higher current wait times, limited parking, special events, and pleasant weather usually indicate higher future wait times and congestion.
 `,
 });
 

@@ -7,7 +7,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Loader2, Sparkles, Lightbulb, AlertTriangle } from 'lucide-react';
+import { Loader2, Sparkles, Lightbulb, AlertTriangle, Clock } from 'lucide-react';
 
 const initialState = {};
 
@@ -75,8 +75,8 @@ export function CrowdPredictorForm() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-1">
-                    <h4 className="font-semibold">Predicted Inflow:</h4>
-                    <p className="font-bold text-lg text-primary">{state.prediction.predictedInflow}</p>
+                    <h4 className="font-semibold flex items-center gap-2"><Clock className="size-5" />Predicted Darshan Time:</h4>
+                    <p className="font-bold text-lg text-primary">{state.prediction.predictedDarshanTime}</p>
                 </div>
                 <div className="space-y-1">
                     <h4 className="font-semibold">Congestion Level:</h4>
