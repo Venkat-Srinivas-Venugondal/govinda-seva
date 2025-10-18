@@ -12,11 +12,12 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Megaphone, BrainCircuit, LogOut, Wind } from 'lucide-react';
+import { LayoutDashboard, Megaphone, BrainCircuit, LogOut, Wind, Users } from 'lucide-react';
 import React from 'react';
 
 const adminNavItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: <LayoutDashboard /> },
+  { href: '/admin/staff', label: 'Staff Details', icon: <Users /> },
   { href: '/admin/broadcast', label: 'Broadcast', icon: <Megaphone /> },
   { href: '/admin/crowd-predictor', label: 'Crowd Predictor', icon: <BrainCircuit /> },
 ];

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
@@ -20,12 +21,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import type { Issue, SosAlert } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { Users, AlertTriangle, Wrench, Loader2, Clock } from 'lucide-react';
 import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { UpdateDarshanTimeForm } from '@/components/admin/update-darshan-time-form';
+import { StaffShifts, placeholderStaffShifts } from '@/lib/staff-shifts';
 
 export default function AdminDashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -47,12 +49,18 @@ export default function AdminDashboardPage() {
     if (!firestore) return null;
     return query(collection(firestore, 'darshanTimes'), orderBy('timestamp', 'desc'), limit(1));
   }, [firestore]);
+  
+  const staffShiftsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'staffShifts'), orderBy('loginTime', 'desc'));
+  }, [firestore]);
 
   const { data: issues, isLoading: isLoadingIssues } = useCollection<Issue>(issuesQuery);
   const { data: alerts, isLoading: isLoadingAlerts } = useCollection<SosAlert & { latitude: number; longitude: number }>(alertsQuery);
   const { data: darshanTimes, isLoading: isLoadingDarshan } = useCollection<{waitTime: number}>(darshanTimesQuery);
-  const latestDarshanTime = darshanTimes?.[0];
+  const { data: staffShifts, isLoading: isLoadingStaff } = useCollection<StaffShifts>(staffShiftsQuery);
 
+  const latestDarshanTime = darshanTimes?.[0];
 
   const getStatusBadge = (status: Issue['status']) => {
     switch (status) {
@@ -62,8 +70,16 @@ export default function AdminDashboardPage() {
       default: return <Badge>{status}</Badge>;
     }
   };
+
+  const formatWaitTime = (minutes: number) => {
+    if (minutes < 60) return `${minutes} mins`;
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes === 0) return `${hours} hr${hours > 1 ? 's' : ''}`;
+    return `${hours}hr ${remainingMinutes}m`;
+  };
   
-  const isLoading = isUserLoading || isLoadingIssues || isLoadingAlerts || isLoadingDarshan;
+  const isLoading = isUserLoading || isLoadingIssues || isLoadingAlerts || isLoadingDarshan || isLoadingStaff;
 
   if (isLoading) {
     return (
@@ -80,13 +96,15 @@ export default function AdminDashboardPage() {
 
   const openIssuesCount = issues?.filter(i => i.status !== 'Resolved').length ?? 0;
   const activeAlertsCount = alerts?.length ?? 0;
+  const activeStaffCount = (staffShifts || placeholderStaffShifts).filter(s => !s.logoutTime).length;
+
 
   return (
     <div 
       className="relative min-h-screen p-4 md:p-8"
     >
-      <div 
-        className="absolute inset-0 z-0 opacity-[0.05]" 
+       <div 
+        className="absolute inset-0 z-0 opacity-[0.08]" 
         style={{
           backgroundImage: "url('https://upload.wikimedia.org/wikipedia/en/4/4e/Tirumala_Tirupati_Devasthanams_Logo.svg')",
           backgroundSize: '300px 300px',
@@ -99,16 +117,18 @@ export default function AdminDashboardPage() {
         <p className="text-muted-foreground">Live overview of temple operations.</p>
         
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Staff</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">128</div>
-              <p className="text-xs text-muted-foreground">Volunteers and Staff currently on duty</p>
-            </CardContent>
-          </Card>
+          <Link href="/admin/staff">
+            <Card className="h-full transition-shadow hover:shadow-lg">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Staff</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeStaffCount}</div>
+                <p className="text-xs text-muted-foreground">Volunteers and Staff currently on duty</p>
+              </CardContent>
+            </Card>
+          </Link>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Open Issues</CardTitle>
@@ -135,7 +155,7 @@ export default function AdminDashboardPage() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{latestDarshanTime ? `${latestDarshanTime.waitTime} mins` : 'N/A'}</div>
+              <div className="text-2xl font-bold">{latestDarshanTime ? formatWaitTime(latestDarshanTime.waitTime) : 'N/A'}</div>
               <UpdateDarshanTimeForm currentWaitTime={latestDarshanTime?.waitTime} />
             </CardContent>
           </Card>

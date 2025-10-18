@@ -24,3 +24,11 @@ export type BroadcastMessage = {
   timestamp: Date;
   sentBy: string;
 };
+
+export type StaffShift = {
+  id: string;
+  staffName: string;
+  role: 'Volunteer' | 'Admin' | 'Security';
+  loginTime: Timestamp;
+  logoutTime?: Timestamp;
+};

@@ -197,6 +197,32 @@
         }
       },
       "required": ["waitTime", "timestamp", "updatedBy"]
+    },
+    "StaffShift": {
+      "title": "StaffShift",
+      "type": "object",
+      "description": "Represents a staff member's shift details.",
+      "properties": {
+        "staffName": {
+          "type": "string",
+          "description": "Name of the staff member."
+        },
+        "role": {
+          "type": "string",
+          "description": "Role of the staff member (e.g., 'Volunteer', 'Security', 'Admin')."
+        },
+        "loginTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the staff member logged in."
+        },
+        "logoutTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of when the staff member logged out."
+        }
+      },
+      "required": ["staffName", "role", "loginTime"]
     }
   },
   "auth": {
@@ -244,6 +270,10 @@
     "/darshanTimes/{darshanTimeId}": {
         "schema": { "$ref": "#/entities/DarshanTime" },
         "description": "Stores historical and current Darshan wait times."
+    },
+    "/staffShifts/{shiftId}": {
+      "schema": { "$ref": "#/entities/StaffShift" },
+      "description": "Stores shift details for staff and volunteers."
     }
   }
 }

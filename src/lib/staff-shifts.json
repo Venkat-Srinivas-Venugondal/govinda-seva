@@ -1,0 +1,36 @@
+{
+    "staffShifts": [
+        {
+            "id": "1",
+            "staffName": "Anjali Sharma",
+            "role": "Volunteer",
+            "loginTime": { "seconds": 1720000000, "nanoseconds": 0 },
+            "logoutTime": { "seconds": 1720028800, "nanoseconds": 0 }
+        },
+        {
+            "id": "2",
+            "staffName": "Rajesh Kumar",
+            "role": "Security",
+            "loginTime": { "seconds": 1720003600, "nanoseconds": 0 }
+        },
+        {
+            "id": "3",
+            "staffName": "Priya Singh",
+            "role": "Admin",
+            "loginTime": { "seconds": 1720007200, "nanoseconds": 0 }
+        },
+        {
+            "id": "4",
+            "staffName": "Vikram Patel",
+            "role": "Volunteer",
+            "loginTime": { "seconds": 1720010800, "nanoseconds": 0 },
+            "logoutTime": { "seconds": 1720039600, "nanoseconds": 0 }
+        },
+        {
+            "id": "5",
+            "staffName": "Sunita Devi",
+            "role": "Security",
+            "loginTime": { "seconds": 1720014400, "nanoseconds": 0 }
+        }
+    ]
+}
