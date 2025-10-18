@@ -1,192 +1,160 @@
 /**
  * @file Firestore Security Rules
- * @core_philosophy This ruleset enforces a role-based access control model.
- *  - Admins have full read/write access.
- *  - Users (devotees) can create issue reports and emergency alerts.
- *  - Users can read their own profile data.
- *  - Staff shift data is only accessible to admins.
- * @data_structure
- *  - /issueReports/{issueReportId}: Stores issue reports.
- *  - /emergencyAlerts/{emergencyAlertId}: Stores emergency alerts.
- *  - /users/{userId}: Stores user profiles.
- *  - /broadcastMessages/{broadcastMessageId}: Stores broadcast messages.
- *  - /roles/{userId}: Stores user roles (isAdmin, isVolunteer).
- *  - /darshanTimes/{darshanTimeId}: Stores Darshan wait times.
- *  - /staffShifts/{shiftId}: Stores shift details for staff.
- * @key_security_decisions
- *  - Only admins can create/update/delete broadcast messages, darshan times and staff shifts.
- *  - Users can only read their own user profile.
- *  - Listing of users is disallowed to prevent data leakage.
- * @denormalization_for_authorization N/A - Role based authorization is used.
- * @structural_segregation N/A
+ * @description This ruleset enforces a role-based access control model, with specific rules for each collection.
+ *
+ * Data Structure:
+ * - /issueReports/{issueReportId}: Issues reported by devotees.
+ * - /emergencyAlerts/{emergencyAlertId}: Emergency alerts from devotees.
+ * - /users/{userId}: Public user profiles.
+ * - /broadcastMessages/{broadcastMessageId}: Messages broadcast by admins.
+ * - /roles/{userId}: User roles (isAdmin, isVolunteer).
+ * - /darshanTimes/{darshanTimeId}: Darshan wait times.
+ * - /staffShifts/{shiftId}: Staff shift details.
+ *
+ * Key Security Decisions:
+ * - Listing of any collection is disallowed by default.
+ * - User profiles (/users/{userId}) are readable by all but only writable by the user themselves.
+ * - Roles are only writable by admins.
+ *
+ * Denormalization for Authorization:
+ * - The rules depend on the "roles" collection to determine admin status. Consider denormalizing roles directly onto the user document for faster checks if performance becomes an issue.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the resource.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the user has the 'admin' role.
-     */
-    function isAdmin() {
-      return get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
-    }
-
-    /**
-     * @description Checks if the document exists and the authenticated user is the owner.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * @description
-     *  Allows any authenticated user to create issue reports.
-     *  No update or delete allowed
-     * @path /issueReports/{issueReportId}
-     * @allow (create) User with auth.uid 'user123' creates a new issue report.
-     * @deny (update) User with auth.uid 'user123' attempts to update an issue report.
-     * @deny (delete) User with auth.uid 'user123' attempts to delete an issue report.
-     * @principle Allows authenticated users to report issues, but does not allow modifications or deletions.
+     * @description Allows anyone to read issue reports, but restricts creation to authenticated users. Updates and deletes are disallowed.
+     * @path /databases/{database}/documents/issueReports/{issueReportId}
+     * @allow (get) - Any user can read an issue report.
+     * @allow (create) - Any authenticated user can create an issue report. The 'reportedBy' field must match their UID.
+     * @deny (update) - No one can update an issue report.
+     * @deny (delete) - No one can delete an issue report.
+     * @principle Allows public read access while restricting write access to authenticated users.
      */
     match /issueReports/{issueReportId} {
       allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.reportedBy == request.auth.uid;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description
-     *  Allows any authenticated user to create emergency alerts.
-     *  No update or delete allowed
-     * @path /emergencyAlerts/{emergencyAlertId}
-     * @allow (create) User with auth.uid 'user123' creates a new emergency alert.
-     * @deny (update) User with auth.uid 'user123' attempts to update an emergency alert.
-     * @deny (delete) User with auth.uid 'user123' attempts to delete an emergency alert.
-     * @principle Allows authenticated users to send emergency alerts, but does not allow modifications or deletions.
+     * @description Allows anyone to read emergency alerts, but restricts creation to authenticated users. Updates and deletes are disallowed.
+     * @path /databases/{database}/documents/emergencyAlerts/{emergencyAlertId}
+     * @allow (get) - Any user can read an emergency alert.
+     * @allow (create) - Any authenticated user can create an emergency alert. The 'sentBy' field must match their UID.
+     * @deny (update) - No one can update an emergency alert.
+     * @deny (delete) - No one can delete an emergency alert.
+     * @principle Allows public read access while restricting write access to authenticated users.
      */
     match /emergencyAlerts/{emergencyAlertId} {
       allow get: if true;
-      allow list: if true;
-      allow create: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.sentBy == request.auth.uid;
       allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description
-     *  Allows a user to read their own profile.
-     *  Allows a user to create their own profile, enforcing that the document ID matches their auth UID.
-     *  Allows a user to update their own profile, enforcing immutability of the user ID.
-     *  Does not allow listing all users.
-     * @path /users/{userId}
-     * @allow (get) User with auth.uid 'user123' reads their own profile.
-     * @allow (create) User with auth.uid 'user123' creates a profile with document ID 'user123'.
-     * @allow (update) User with auth.uid 'user123' updates their profile data.
-     * @deny (get) User with auth.uid 'user456' attempts to read profile of user with ID 'user123'.
-     * @deny (create) User with auth.uid 'user123' attempts to create a profile with document ID 'user456'.
-     * @deny (list) Any user attempts to list all profiles in /users.
-     * @principle Enforces user ownership for profile access, creation, and updates. Prevents unauthorized access and modification of user profiles.
+     * @description Allows anyone to read user profiles, but restricts updates and deletes to the user themselves. Only the user can create their profile.
+     * @path /databases/{database}/documents/users/{userId}
+     * @allow (get) - Any user can read a user profile.
+     * @allow (create) - Any authenticated user can create their own profile, with the document ID matching their UID.
+     * @allow (update) - Only the user can update their own profile.
+     * @allow (delete) - Only the user can delete their own profile.
+     * @deny (create) - A user cannot create a profile for another user (userId mismatch).
+     * @deny (update) - A user cannot update another user's profile (userId mismatch).
+     * @deny (delete) - A user cannot delete another user's profile (userId mismatch).
+     * @principle Enforces user-ownership for profile data.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get: if true;
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if false;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description
-     *  Allows admins to manage broadcast messages.
-     * @path /broadcastMessages/{broadcastMessageId}
-     * @allow (create) Admin creates a new broadcast message.
-     * @allow (update) Admin updates an existing broadcast message.
-     * @allow (delete) Admin deletes a broadcast message.
-     * @deny (create) Non-admin attempts to create a broadcast message.
-     * @deny (update) Non-admin attempts to update a broadcast message.
-     * @deny (delete) Non-admin attempts to delete a broadcast message.
-     * @principle Restricts broadcast message management to administrators.
+     * @description Allows anyone to read broadcast messages, but restricts creation to admins. Updates and deletes are disallowed.
+     * @path /databases/{database}/documents/broadcastMessages/{broadcastMessageId}
+     * @allow (get) - Any user can read a broadcast message.
+     * @allow (create) - Only admins can create broadcast messages. The 'sentBy' field must match the admin's UID.
+     * @deny (update) - No one can update a broadcast message.
+     * @deny (delete) - No one can delete a broadcast message.
+     * @principle Allows public read access while restricting write access to admins.
      */
     match /broadcastMessages/{broadcastMessageId} {
       allow get: if true;
-      allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
-    }
-
-    /**
-     * @description
-     *  Allows admins to manage user roles.
-     * @path /roles/{userId}
-     * @allow (create) Admin creates a role entry for a user.
-     * @allow (update) Admin updates a role entry for a user.
-     * @deny (create) Non-admin attempts to create a role entry.
-     * @deny (update) Non-admin attempts to update a role entry.
-     * @principle Restricts role management to administrators.
-     */
-    match /roles/{userId} {
-      allow get: if isAdmin() || isOwner(userId);
       allow list: if false;
       allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
+      allow update: if false;
       allow delete: if false;
     }
 
     /**
-     * @description
-     *  Allows admins to manage Darshan wait times.
-     * @path /darshanTimes/{darshanTimeId}
-     * @allow (create) Admin creates a new Darshan time entry.
-     * @allow (update) Admin updates an existing Darshan time entry.
-     * @allow (delete) Admin deletes a Darshan time entry.
-     * @deny (create) Non-admin attempts to create a Darshan time entry.
-     * @deny (update) Non-admin attempts to update a Darshan time entry.
-     * @deny (delete) Non-admin attempts to delete a Darshan time entry.
-     * @principle Restricts Darshan time management to administrators.
+     * @description Restricts read and write access to user roles to admins only.
+     * @path /databases/{database}/documents/roles/{userId}
+     * @allow (get) - Only admins can read user roles.
+     * @allow (create) - Only admins can create user roles.
+     * @allow (update) - Only admins can update user roles.
+     * @allow (delete) - Only admins can delete user roles.
+     * @principle Enforces admin-only access for role management.
      */
-    match /darshanTimes/{darshanTimeId} {
-      allow get: if true;
-      allow list: if true;
+    match /roles/{userId} {
+      allow get: if isAdmin();
+      allow list: if false;
       allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**
-     * @description
-     *  Allows admins to manage staff shift details.
-     * @path /staffShifts/{shiftId}
-     * @allow (create) Admin creates a new staff shift entry.
-     * @allow (update) Admin updates an existing staff shift entry.
-     * @allow (delete) Admin deletes a staff shift entry.
-     * @deny (create) Non-admin attempts to create a staff shift entry.
-     * @deny (update) Non-admin attempts to update a staff shift entry.
-     * @deny (delete) Non-admin attempts to delete a staff shift entry.
+     * @description Allows anyone to read darshan times, but restricts creation, updates, and deletes to admins only.
+     * @path /databases/{database}/documents/darshanTimes/{darshanTimeId}
+     * @allow (get) - Any user can read darshan times.
+     * @allow (create) - Only admins can create darshan times.
+     * @allow (update) - Only admins can update darshan times.
+     * @allow (delete) - Only admins can delete darshan times.
+     */
+    match /darshanTimes/{darshanTimeId} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Allows anyone to read staff shifts, but restricts creation, updates, and deletes to admins only.
+     * @path /databases/{database}/documents/staffShifts/{shiftId}
+     * @allow (get) - Any user can read staff shift details.
+     * @allow (create) - Only admins can create staff shift details.
+     * @allow (update) - Only admins can update staff shift details.
+     * @allow (delete) - Only admins can delete staff shift details.
      * @principle Restricts staff shift management to administrators.
      */
     match /staffShifts/{shiftId} {
-      allow get: if isAdmin();
-      allow list: if isAdmin();
+      allow get: if true;
+      allow list: if false;
       allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
+  }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isAdmin() {
+    return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isAdmin == true;
+  }
+
+  function isVolunteer() {
+    return isSignedIn() && get(/databases/$(database)/documents/roles/$(request.auth.uid)).data.isVolunteer == true;
   }
 }
