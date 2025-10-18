@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LogIn, LogOut, User, Wind } from 'lucide-react';
+import { LogIn, LogOut, User, Wind, UserPlus } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { getAuth, signOut } from 'firebase/auth';
 
@@ -21,8 +21,8 @@ export function Header() {
           <Wind className="h-6 w-6 text-primary" />
           <span className="font-headline text-2xl font-bold">Govinda Seva</span>
         </Link>
-        <div className="flex flex-1 items-center justify-end space-x-4">
-          <nav className="flex items-center space-x-1">
+        <div className="flex flex-1 items-center justify-end space-x-2">
+          <nav className="flex items-center space-x-2">
             {isUserLoading ? (
               <Button variant="ghost" disabled>Loading...</Button>
             ) : user ? (
@@ -31,12 +31,20 @@ export function Header() {
                 Logout
               </Button>
             ) : (
-              <Link href="/login">
-                <Button>
-                  <LogIn className="mr-2 size-4" />
-                  Login / Signup
+              <>
+                <Button asChild variant="ghost">
+                    <Link href="/login">
+                        <LogIn className="mr-2 size-4" />
+                        Login
+                    </Link>
                 </Button>
-              </Link>
+                <Button asChild>
+                    <Link href="/register">
+                        <UserPlus className="mr-2 size-4" />
+                        Sign Up
+                    </Link>
+                </Button>
+              </>
             )}
           </nav>
         </div>
