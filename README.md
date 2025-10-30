@@ -17,6 +17,4 @@ Govinda Seva is a full-stack web application that enhances the temple pilgrimage
 -   **Generative AI**: Google AI with Genkit
 -   **UI/Styling**: ShadCN UI & Tailwind CSS
 
----
 
-*This project was built in **Firebase Studio**.*
